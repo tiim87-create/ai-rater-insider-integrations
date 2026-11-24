@@ -1,0 +1,1 @@
+Deployment-only build of ARI NTA Bridge. Experimental plugin; capture disabled by default. Do not activate before staged validation. No secrets or data included.
