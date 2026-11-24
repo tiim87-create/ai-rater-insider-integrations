@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -44,10 +44,11 @@ final class ARI_NTA_Bridge {
 
     private static function source_verified( $feedback_id ) {
         // Fail closed unless Jetpack metadata explicitly establishes source.
-        $form_id = get_post_meta( $feedback_id, '_feedback_form_id', true );
-        $source_id = get_post_meta( $feedback_id, '_feedback_post_id', true );
-        return (string) $form_id === (string) self::EXPECTED_FORM ||
-            (string) $source_id === (string) self::EXPECTED_PAGE;
+        // Confirmed on this site against feedback #1201 and #1208:
+        // Jetpack attributes submissions to page 1200 using this metadata key.
+        // Require an exact source page match; do not accept legacy or unrelated IDs.
+        $source_id = get_post_meta( $feedback_id, '_feedback_source_post_id', true );
+        return (string) $source_id === (string) self::EXPECTED_PAGE;
     }
 
     public static function on_feedback( $feedback_id, $visible_fields, $is_spam, $entry_values ) {
@@ -153,7 +154,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.2 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.3 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
