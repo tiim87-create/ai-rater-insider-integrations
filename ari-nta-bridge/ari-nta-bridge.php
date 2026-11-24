@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.4
+ * Version: 0.1.5
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -58,17 +58,15 @@ final class ARI_NTA_Bridge {
      */
     private static function observe_field_shape( $entry_values ) {
         $is_array = is_array( $entry_values );
-        $present = array();
-        foreach ( ARI_NTA_Schema::FIELDS as $label ) {
-            $present[ $label ] = $is_array && array_key_exists( $label, $entry_values );
-        }
+        $observed = ARI_NTA_Schema::field_shape( $entry_values );
         $shape = array(
             'hook_seen' => true,
             'entry_values_is_array' => $is_array,
-            'expected_fields_present' => array_sum( array_map( 'intval', array_values( $present ) ) ),
+            'expected_fields_present' => $observed['count'],
             'expected_fields_total' => count( ARI_NTA_Schema::FIELDS ),
-            'present' => $present,
-            'passes_normalizer' => ARI_NTA_Schema::normalize( $entry_values ) !== null,
+            'present' => $observed['present'],
+            'duplicate_labels' => $observed['duplicates'],
+            'passes_normalizer' => ARI_NTA_Schema::from_jetpack( $entry_values ) !== null,
         );
         // Only booleans and aggregate counts; no visitor data, values, or IDs.
         update_option( 'ari_nta_last_hook_shape', $shape, false );
@@ -87,7 +85,7 @@ final class ARI_NTA_Bridge {
 
         // Deliberately accept only field-label keys; no fallback to arbitrary
         // Jetpack post_content, attachments, identity or technical metadata.
-        $clean = ARI_NTA_Schema::normalize($entry_values);
+        $clean = ARI_NTA_Schema::from_jetpack($entry_values);
         if ( ! $clean ) return;
         global $wpdb;
         $wpdb->insert( $wpdb->prefix . self::TABLE, array(
@@ -180,7 +178,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.4 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.5 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
@@ -210,6 +208,17 @@ final class ARI_NTA_Bridge {
             echo '<li>Actual source equals reusable form 1204: ' . ( (string) $actual_source === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Current source verification rule matches: ' . ( self::source_verified( $feedback_id ) ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Feedback metadata key names: ' . ( $safe_keys ? esc_html( implode( ', ', $safe_keys ) ) : 'None found' ) . '</li>';
+            // Read saved Jetpack extra fields only to classify key shapes.
+            // Do NOT render values or unrecognized keys to the browser.
+            $stored = get_post_meta( $feedback_id, '_feedback_extra_fields', true );
+            $stored_shape = ARI_NTA_Schema::field_shape( $stored );
+            echo '<li>Stored extra-field labels recognized: ' . esc_html( (string) $stored_shape['count'] ) . ' / 11</li>';
+            echo '<li>Stored extra-field labels duplicated: ' . ( $stored_shape['duplicates'] ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Stored extra fields pass schema: ' . ( ARI_NTA_Schema::from_jetpack($stored) !== null ? 'Yes' : 'No' ) . '</li>';
+            foreach ( ARI_NTA_Schema::FIELDS as $safe_label ) {
+                echo '<li>Stored ' . esc_html($safe_label) . ': ' .
+                    ( ! empty($stored_shape['present'][$safe_label]) ? 'Present' : 'Missing' ) . '</li>';
+            }
             echo '</ul>';
         }
         echo '<h2>Most recent form hook: field-label shape only</h2>';
