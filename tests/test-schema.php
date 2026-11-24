@@ -41,3 +41,20 @@ $indexed['999_Project']='ads_quality';
 expect(ARI_NTA_Schema::from_jetpack($indexed)===null,'duplicate Jetpack labels rejected');
 $indexed=array('4_Project'=>'search_quality',' IP Address'=>'private');
 expect(ARI_NTA_Schema::field_shape($indexed)['count']===1,'unknown private keys ignored');
+
+$details=ARI_NTA_Schema::validate_shape_and_values(entry());
+expect(count(array_filter($details['valid']))===11,'all eleven values individually valid');
+expect(!in_array(true,$details['flags'],true),'valid report has no cross-field errors');
+$x=entry();$x['Vendor']='nonsense';
+$details=ARI_NTA_Schema::validate_shape_and_values($x);
+expect(!$details['valid']['Vendor'] && $details['valid']['Project'],
+  'invalid vendor reported without values');
+$x=entry();$x['Days attempted to work']='2';$x['Days with NTA']='3';
+$details=ARI_NTA_Schema::validate_shape_and_values($x);
+expect($details['flags']['nta_exceeds_attempted'],'cross-field NTA violation reported');
+$x=entry();$x['Days attempted to work']='0';
+$details=ARI_NTA_Schema::validate_shape_and_values($x);
+expect($details['flags']['paid_hours_without_attempts'],'zero-attempt hours violation reported');
+$x=entry();$x['Vendor']=array('secret'=>'not-for-output');
+$details=ARI_NTA_Schema::validate_shape_and_values($x);
+expect(!$details['valid']['Vendor'],'non-scalar field rejected without inspecting value');
