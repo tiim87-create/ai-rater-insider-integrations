@@ -118,3 +118,11 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - GitHub Actions run **45423332589 success**; code on main commit `b48f122deefd5907d54ac2a57775384bfac66fc1`, deployment branch commit `eac82e4245cba44ade9474227a35cc2e07f3ad40`.
 - WordPress deployment run **293645 completed successfully** 2026-11-24 15:17:09 UTC. Plugin inventory showed **v0.1.8 active**. Capture remains **OFF**.
 - **Recommended next release consideration:** client-side validation in Jetpack form to prevent NTA days > attempted days at entry time, while retaining server-side validation as the authoritative guard. Only after end-to-end tests and dedicated read-only export user setup, consider enabling production capture.
+
+## App Password authentication troubleshooting — 2026-11-24
+- Public-mode GitHub run **45439113075** confirmed a harmless `Authorization: ARIProbe v1` header arrives at PHP, but authenticated-only NTA endpoint still returned HTTP 401. Further reported secret rotation did not resolve the error.
+- WordPress.com support suggested a **possible** WordPress.com-connected account / local-user eligibility limitation, but no live value of `wp_is_application_passwords_available_for_user()` was provided. Its root-cause conclusion is therefore **unverified**, not a confirmed platform constraint.
+- Added read-only, admin-only `Application Password eligibility` section to `Tools → NTA Bridge Diagnostics`. It shows only: whether user `nta-exporter` exists, WordPress core global application-password availability, per-user availability, and number of application-password records. No password names, values, hashes, timestamps, user email or user IDs are shown.
+- Main commit `83e99baab742f340c241a032be191f3293cfb157`, deploy branch `d740a1721b037f7de9e830d65716ecdc9217f96e`.
+- WordPress deployment run **293759 success** at 2026-11-24 16:45:02 UTC; plugin list detected **0.2.1 active** during deployment. NTA capture remains disabled.
+- Owner should report the four new diagnostic lines. If core says per-user passwords are available yet GitHub remains 401, do not assume WordPress.com account-linking cause; check core authentication failure classification without logging secrets, or escalate with WordPress.com support.
