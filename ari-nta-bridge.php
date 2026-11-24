@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.3
+ * Version: 0.1.4
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -51,11 +51,37 @@ final class ARI_NTA_Bridge {
         return (string) $source_id === (string) self::EXPECTED_PAGE;
     }
 
+    /**
+     * Observe only the shape of one Jetpack hook payload, never its values.
+     * This remains enabled in staging while the report capture flag stays OFF.
+     * Only the allowlisted 11 expected labels are considered.
+     */
+    private static function observe_field_shape( $entry_values ) {
+        $is_array = is_array( $entry_values );
+        $present = array();
+        foreach ( ARI_NTA_Schema::FIELDS as $label ) {
+            $present[ $label ] = $is_array && array_key_exists( $label, $entry_values );
+        }
+        $shape = array(
+            'hook_seen' => true,
+            'entry_values_is_array' => $is_array,
+            'expected_fields_present' => array_sum( array_map( 'intval', array_values( $present ) ) ),
+            'expected_fields_total' => count( ARI_NTA_Schema::FIELDS ),
+            'present' => $present,
+            'passes_normalizer' => ARI_NTA_Schema::normalize( $entry_values ) !== null,
+        );
+        // Only booleans and aggregate counts; no visitor data, values, or IDs.
+        update_option( 'ari_nta_last_hook_shape', $shape, false );
+    }
+
     public static function on_feedback( $feedback_id, $visible_fields, $is_spam, $entry_values ) {
-        if ( ! self::capture_enabled() || $is_spam || ! is_numeric($feedback_id) ) return;
+        if ( $is_spam || ! is_numeric($feedback_id) ) return;
         $feedback_id = (int) $feedback_id;
         if ( $feedback_id <= 0 || get_post_type($feedback_id) !== 'feedback' ||
             ! self::source_verified($feedback_id) ) return;
+        // Field-shape probe stores only whitelist-name presence, not field values.
+        self::observe_field_shape( $entry_values );
+        if ( ! self::capture_enabled() ) return;
         $post = get_post($feedback_id);
         if ( ! $post || substr($post->post_date,0,10) < self::LAUNCH_DATE ) return;
 
@@ -154,7 +180,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.3 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.4 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
@@ -184,6 +210,23 @@ final class ARI_NTA_Bridge {
             echo '<li>Actual source equals reusable form 1204: ' . ( (string) $actual_source === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Current source verification rule matches: ' . ( self::source_verified( $feedback_id ) ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Feedback metadata key names: ' . ( $safe_keys ? esc_html( implode( ', ', $safe_keys ) ) : 'None found' ) . '</li>';
+            echo '</ul>';
+        }
+        echo '<h2>Most recent form hook: field-label shape only</h2>';
+        $shape = get_option( 'ari_nta_last_hook_shape', false );
+        if ( ! is_array($shape) || empty($shape['hook_seen']) ) {
+            echo '<p>No matching Jetpack hook has been observed since this probe was installed.</p>';
+        } else {
+            echo '<p>Hook observed: Yes</p>';
+            echo '<p>Fourth argument is an array: ' . ( ! empty($shape['entry_values_is_array']) ? 'Yes' : 'No' ) . '</p>';
+            echo '<p>Recognized field labels: ' . esc_html( (string) ($shape['expected_fields_present'] ?? 0) ) . ' / 11</p>';
+            echo '<p>Entire payload passes schema: ' . ( ! empty($shape['passes_normalizer']) ? 'Yes' : 'No' ) . '</p>';
+            echo '<ul>';
+            $present = isset($shape['present']) && is_array($shape['present']) ? $shape['present'] : array();
+            foreach ( ARI_NTA_Schema::FIELDS as $label ) {
+                echo '<li>' . esc_html($label) . ': ' .
+                    ( ! empty($present[$label]) ? 'Present' : 'Missing' ) . '</li>';
+            }
             echo '</ul>';
         }
         echo '<p>Do not enable capture until source attribution and Jetpack field-label mapping are verified.</p></div>';
