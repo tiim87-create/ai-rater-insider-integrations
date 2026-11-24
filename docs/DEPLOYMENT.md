@@ -90,3 +90,11 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - Main commits: schema `651d31195d285f74ae4e26a0ccb049b12768cdd5`, bridge `36a98e150dcd92526edc7d324d4e5f8f980d3888`, tests `0d250a8bbcaafc5e6f789b8b60b3773da7b09201`.
 - Deployment branch commit `63e3dca096c8f39b3c731241d81a3d397df93500`. WordPress deployment **293628 success** 2026-11-24 15:00:19 UTC. Plugin inventory confirmed **v0.1.5 active**. Main GitHub Actions run **45420036681 success**, covering added schema tests and syntax.
 - **Capture remains disabled**. Do not enable until the saved-extra-fields diagnostics clarify the actual structure and live hook values are verified, and the independent Python normalization/export pipeline is wired.
+
+## Saved Jetpack fields identified and processing adapted — 2026-11-24
+- Owner independently confirmed saved `_feedback_extra_fields` for historical NTA submissions **#1208** and **#1201** contains **11/11 recognized field labels**, no duplicates, and all fields pass the strict schema.
+- The live hook's fourth argument was an array but did not contain any expected labels (0/11). We therefore no longer depend on its contents.
+- Version **0.1.6** modifies the hook callback: schedule `process_saved_feedback` for the WordPress `shutdown` phase, look up the verified `_feedback_source_post_id=1200`, read saved `_feedback_extra_fields`, apply the 11-field allowlist and normalized schema, and record only safe field-presence booleans for diagnostics.
+- When `ARI_NTA_CAPTURE_ENABLED` is false, the plugin **does not write report rows**, even though the diagnostic probe can update a safe non-PII option.
+- New extraction logic has **not** yet been verified via a post-deployment submission; shutdown timing is a hypothesis requiring a controlled test. Do not enable capture until a new test demonstrates **11/11 recognized labels** and **schema Yes** in "Most recent form hook" from the saved-meta path.
+- Main source commit `f9b4ff1887faf4fbed22126864f9f7e2ca150b85`; GitHub Actions run **45420898551 success** (PHP lint and schema tests). Deployment branch commit `2413851c3b3d4790e4e149511aef816e5765b934`, WordPress deployment run **293633** started 2026-11-24 15:03:48 UTC. At note-writing time plugin inventory confirms v0.1.6 **active**; deployment completion to be verified separately.
