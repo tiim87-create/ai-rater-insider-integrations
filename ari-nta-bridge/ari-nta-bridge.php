@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.2.1
+ * Version: 0.2.2
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -18,6 +18,7 @@ final class ARI_NTA_Bridge {
     public static function init() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
         add_action( 'admin_menu', array( __CLASS__, 'register_admin_page' ) );
+        add_filter( 'rest_authentication_errors', array( __CLASS__, 'observe_auth_transport' ), 99, 1 );
         add_action( 'grunion_after_feedback_post_inserted', array( __CLASS__, 'on_feedback' ), 20, 4 );
     }
 
@@ -107,6 +108,42 @@ final class ARI_NTA_Bridge {
             'payload' => wp_json_encode($clean),
         ), array('%d','%s','%s') );
         // The primary key prevents duplicate imports.
+    }
+
+    /**
+     * Temporary auth-transport probe for the dedicated NTA route only.
+     * Keep the original authentication result unchanged. Do not record
+     * usernames, passwords, tokens, authorization values, IPs or bodies.
+     */
+    public static function observe_auth_transport( $result ) {
+        $path = isset($_SERVER['REQUEST_URI']) ? wp_parse_url(
+            wp_unslash($_SERVER['REQUEST_URI']), PHP_URL_PATH
+        ) : '';
+        if ( ! is_string($path) || ! in_array($path, array(
+            '/wp-json/ari-nta/v1/auth-check',
+            '/index.php/wp-json/ari-nta/v1/auth-check',
+        ), true) ) {
+            return $result;
+        }
+        $has_basic = isset($_SERVER['HTTP_AUTHORIZATION']) &&
+            stripos((string) $_SERVER['HTTP_AUTHORIZATION'], 'Basic ') === 0;
+        $has_redirect_basic = isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) &&
+            stripos((string) $_SERVER['REDIRECT_HTTP_AUTHORIZATION'], 'Basic ') === 0;
+        $snapshot = array(
+            'probe_seen' => true,
+            'http_basic_arrived' => (bool)($has_basic || $has_redirect_basic),
+            'php_auth_user_present' => isset($_SERVER['PHP_AUTH_USER']) &&
+                is_string($_SERVER['PHP_AUTH_USER']) &&
+                $_SERVER['PHP_AUTH_USER'] !== '',
+            'php_auth_pw_present' => isset($_SERVER['PHP_AUTH_PW']) &&
+                is_string($_SERVER['PHP_AUTH_PW']) &&
+                $_SERVER['PHP_AUTH_PW'] !== '',
+            'auth_result_kind' => is_wp_error($result) ? 'WP_Error' :
+                ( $result === null ? 'null' : ( $result === true ? 'true' : 'other' ) ),
+            'authenticated_at_probe' => is_user_logged_in(),
+        );
+        update_option( 'ari_nta_auth_transport_probe', $snapshot, false );
+        return $result;
     }
 
     public static function register_routes() {
@@ -227,6 +264,27 @@ final class ARI_NTA_Bridge {
         // Inspect WordPress core application-password availability for the
         // dedicated export user. Only feature booleans are shown, never secrets.
         $export_user = get_user_by('login','nta-exporter');
+        echo '<h2>Last GitHub Basic Auth transport check</h2>';
+        $auth_probe = get_option('ari_nta_auth_transport_probe', false);
+        if ( ! is_array($auth_probe) || empty($auth_probe['probe_seen']) ) {
+            echo '<p>No eligible NTA auth-check request has been observed since v0.2.2.</p>';
+        } else {
+            $boolean_keys = array(
+                'http_basic_arrived' => 'Basic Authorization header reached PHP',
+                'php_auth_user_present' => 'PHP_AUTH_USER populated',
+                'php_auth_pw_present' => 'PHP_AUTH_PW populated',
+                'authenticated_at_probe' => 'WordPress user authenticated at probe',
+            );
+            foreach ($boolean_keys as $key => $label) {
+                echo '<p>' . esc_html($label) . ': ' .
+                    (!empty($auth_probe[$key]) ? 'Yes' : 'No') . '</p>';
+            }
+            $kind = isset($auth_probe['auth_result_kind']) &&
+                in_array($auth_probe['auth_result_kind'],array('WP_Error','null','true','other'),true)
+                ? $auth_probe['auth_result_kind'] : 'unavailable';
+            echo '<p>REST authentication result type: ' . esc_html($kind) . '</p>';
+        }
+
         echo '<h2>Application Password eligibility</h2>';
         echo '<p>Export user exists: ' . ( $export_user ? 'Yes' : 'No' ) . '</p>';
         echo '<p>Core application passwords available globally: ' .
@@ -243,7 +301,7 @@ final class ARI_NTA_Bridge {
         }
 
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.2.1 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.2.2 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
