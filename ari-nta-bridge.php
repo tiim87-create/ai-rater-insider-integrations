@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -153,7 +153,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.1 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.2 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
@@ -166,6 +166,9 @@ final class ARI_NTA_Bridge {
             }
             $form_value = get_post_meta( $feedback_id, '_feedback_form_id', true );
             $source_value = get_post_meta( $feedback_id, '_feedback_post_id', true );
+            // Jetpack on this site writes _feedback_source_post_id. Read it only
+            // to classify provenance; never display its raw value or any answers.
+            $actual_source = get_post_meta( $feedback_id, '_feedback_source_post_id', true );
             $keys = array_keys( get_post_meta( $feedback_id ) );
             $safe_keys = array_values( array_filter( $keys, static function( $k ) {
                 return strpos( $k, '_feedback_' ) === 0;
@@ -175,6 +178,9 @@ final class ARI_NTA_Bridge {
             echo '<li>Matches expected form ID: ' . ( (string) $form_value === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Page metadata key present: ' . ( $source_value !== '' ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Matches expected source page: ' . ( (string) $source_value === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Actual Jetpack source key present: ' . ( $actual_source !== '' ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Actual source equals NTA page 1200: ' . ( (string) $actual_source === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Actual source equals reusable form 1204: ' . ( (string) $actual_source === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Current source verification rule matches: ' . ( self::source_verified( $feedback_id ) ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Feedback metadata key names: ' . ( $safe_keys ? esc_html( implode( ', ', $safe_keys ) ) : 'None found' ) . '</li>';
             echo '</ul>';
