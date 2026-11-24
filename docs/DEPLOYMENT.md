@@ -62,3 +62,13 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - GitHub main change commit `130fcda086c7e99311a5262f2757bbc7e7f7e9e3`, deployment branch commit `b002ab3de6a2ed6052b0a7cbad26a39a01544912`.
 - WordPress deployment run **293590** reported **success** at 2026-11-24 14:26:59 UTC; plugin inventory showed **0.1.2 active**.
 - Next: admin refresh `/wp-admin/tools.php?page=ari-nta-diagnostics` and report whether `_feedback_source_post_id` matches expected page or form. Do not enable capture or change production attribution until verified.
+
+## Verified source attribution fix — 2026-11-24
+- Admin-only diagnostic **0.1.2** for saved feedback #1208 and #1201 confirmed:
+  - `_feedback_source_post_id` **present** in both;
+  - source value matches **page 1200** in both; does **not** equal reusable form **1204**;
+  - prior `_feedback_form_id` and `_feedback_post_id` checks were wrong for this site.
+- Replaced `source_verified()` in **0.1.3** to require strict equality `get_post_meta($feedback_id, '_feedback_source_post_id', true) == 1200`. Did not broaden to legacy IDs or any other form.
+- Main commit `860fde0441c282e8847960cea0bcae0fc6278823`; deployment commit `7b5a468a5433cf9ab01a1cedabc23a14a46d2d0d`. Deployment run **293597** reported **success** at 2026-11-24 14:29:42 UTC. Plugin inventory confirmed **v0.1.3 active**.
+- Capture continues **disabled** by default. The saved responses can be used to verify the updated attribution booleans via admin diagnostics, but they are not and must not be imported into the statistical feed.
+- Still unverified: `grunion_after_feedback_post_inserted` fourth argument mapping to the 11 expected labels; any missing matching field must fail closed. Need staged proof before capture activation.
