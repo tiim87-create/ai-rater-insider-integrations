@@ -55,3 +55,10 @@ The plugin is experimental and currently captures no data. Tests validate the *p
 - WordPress installed plugin inventory independently confirmed **0.1.1 active**.
 - **Capture remains disabled.** No responses published or exported.
 - Admin should visit `https://airaterinsider.com/wp-admin/tools.php?page=ari-nta-diagnostics` and report provenance booleans. Do not enable capture until Jetpack hook arguments and exact source metadata are validated.
+
+## Actual Jetpack source metadata discovered — 2026-11-24
+Site owner's admin diagnostics for historical feedback #1208 and #1201 show neither `_feedback_form_id` nor `_feedback_post_id` is present. Actual available key names: `_feedback_source_post_id`, `_feedback_extra_fields`, `_feedback_akismet_values`, and `_feedback_email`. Current `source_verified` therefore returns false for both. The new `_feedback_source_post_id` value is **not yet known** and must not be assumed equal to either page 1200 or reusable form 1204.
+- Read-only admin diagnostics **v0.1.2** added source-key presence and booleans comparing its value to page **1200** and reusable form **1204**, without printing the raw value.
+- GitHub main change commit `130fcda086c7e99311a5262f2757bbc7e7f7e9e3`, deployment branch commit `b002ab3de6a2ed6052b0a7cbad26a39a01544912`.
+- WordPress deployment run **293590** reported **success** at 2026-11-24 14:26:59 UTC; plugin inventory showed **0.1.2 active**.
+- Next: admin refresh `/wp-admin/tools.php?page=ari-nta-diagnostics` and report whether `_feedback_source_post_id` matches expected page or form. Do not enable capture or change production attribution until verified.
