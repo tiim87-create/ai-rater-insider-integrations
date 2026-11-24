@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.2.0
+ * Version: 0.2.1
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -224,8 +224,26 @@ final class ARI_NTA_Bridge {
         }
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
+        // Inspect WordPress core application-password availability for the
+        // dedicated export user. Only feature booleans are shown, never secrets.
+        $export_user = get_user_by('login','nta-exporter');
+        echo '<h2>Application Password eligibility</h2>';
+        echo '<p>Export user exists: ' . ( $export_user ? 'Yes' : 'No' ) . '</p>';
+        echo '<p>Core application passwords available globally: ' .
+            ( function_exists('wp_is_application_passwords_available') &&
+              wp_is_application_passwords_available() ? 'Yes' : 'No' ) . '</p>';
+        echo '<p>Core application passwords available for nta-exporter: ' .
+            ( $export_user && function_exists('wp_is_application_passwords_available_for_user') &&
+              wp_is_application_passwords_available_for_user($export_user) ? 'Yes' : 'No' ) . '</p>';
+        // Existence only. Do not expose password hashes, UUIDs or timestamps.
+        if ( $export_user && class_exists('WP_Application_Passwords') ) {
+            $stored_passwords = WP_Application_Passwords::get_user_application_passwords($export_user->ID);
+            echo '<p>Application password records for exporter: ' .
+                ( is_array($stored_passwords) ? count($stored_passwords) : 'Unknown' ) . '</p>';
+        }
+
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.2.0 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.2.1 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
