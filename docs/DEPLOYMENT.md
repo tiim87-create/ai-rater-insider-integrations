@@ -109,3 +109,12 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - Deployment branch commit **59cc79645f6ae816c4f75c9840a59612e178e23c**. WordPress deployment run **293640 success** (2026-11-24 15:11:28 UTC), plugin inventory verified **v0.1.7 active**.
 - **Capture still disabled**; this is safe read-only diagnosis.
 - Next: owner should open `https://airaterinsider.com/wp-admin/tools.php?page=ari-nta-diagnostics` and share only `Saved field validity` and `Saved cross-field check` for feedback #1213. Correct normalization only if the observed failure is demonstrably a format mismatch; do not silently accept logically invalid answers.
+
+## Confirmed cross-field rejection / diagnostics clarity — 2026-11-24
+- User-provided protected admin diagnostic: feedback **1213** and **1212** each has all 11 fields individually valid and present, but `nta_exceeds_attempted: FAILED`. This is the **only observed reason** both reports fail the strict schema.
+- Feedback **1208** and **1201** pass full schema, with no cross-field failures. No answer values were disclosed.
+- This is correct validation, **not a data extraction failure**. The rule `NTA days <= attempted work days` must remain strict; no import or statistics from invalid records.
+- The old cached `ari_nta_last_hook_shape` option was written by v0.1.6, before per-field diagnostics existed. v0.1.7 rendered missing values as `Invalid or not tested` and missing rule flags as `Not failed`, which was misleading. Version **0.1.8** explicitly marks such old diagnostic snapshots as unavailable and directs readers to current saved-response diagnostics instead. It does not alter capture or schema.
+- GitHub Actions run **45423332589 success**; code on main commit `b48f122deefd5907d54ac2a57775384bfac66fc1`, deployment branch commit `eac82e4245cba44ade9474227a35cc2e07f3ad40`.
+- WordPress deployment run **293645 completed successfully** 2026-11-24 15:17:09 UTC. Plugin inventory showed **v0.1.8 active**. Capture remains **OFF**.
+- **Recommended next release consideration:** client-side validation in Jetpack form to prevent NTA days > attempted days at entry time, while retaining server-side validation as the authoritative guard. Only after end-to-end tests and dedicated read-only export user setup, consider enabling production capture.
