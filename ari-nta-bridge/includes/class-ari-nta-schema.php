@@ -12,6 +12,53 @@ if ( ! class_exists( 'ARI_NTA_Schema', false ) ) {
             'How are hours measured?', 'Source of weekly figures', 'Account access status'
         );
 
+        /**
+         * Jetpack may index field keys as "0_Project", "1_Vendor", etc.
+         * Normalize only allowlisted fields. Ignore unknown keys and never
+         * infer field labels from values. Reject duplicate label collisions.
+         */
+        public static function from_jetpack( $input ) {
+            if ( ! is_array( $input ) ) return null;
+            $mapped = array();
+            foreach ( $input as $key => $value ) {
+                if ( ! is_string($key) ) continue;
+                $label = $key;
+                if ( ! in_array( $label, self::FIELDS, true ) ) {
+                    if ( ! preg_match( '/^[0-9]+_(.+)$/D', $key, $matches ) ) continue;
+                    $label = $matches[1];
+                }
+                if ( ! in_array( $label, self::FIELDS, true ) ) continue;
+                if ( array_key_exists( $label, $mapped ) ) return null;
+                if ( ! is_string( $value ) && ! is_numeric( $value ) ) return null;
+                $mapped[ $label ] = $value;
+            }
+            return self::normalize( $mapped );
+        }
+
+        /**
+         * Diagnostic shape only: field labels matched, never any response values.
+         */
+        public static function field_shape( $input ) {
+            $present = array_fill_keys( self::FIELDS, false );
+            $duplicates = false;
+            if ( is_array($input) ) {
+                foreach ( $input as $key => $_unused ) {
+                    if ( ! is_string($key) ) continue;
+                    $label = $key;
+                    if ( ! in_array($label,self::FIELDS,true) ) {
+                        if ( ! preg_match('/^[0-9]+_(.+)$/D',$key,$m) ) continue;
+                        $label = $m[1];
+                    }
+                    if ( ! array_key_exists($label,$present) ) continue;
+                    if ( $present[$label] ) $duplicates = true;
+                    $present[$label] = true;
+                }
+            }
+            return array('present'=>$present,
+                'count'=>count(array_filter($present)),
+                'duplicates'=>$duplicates);
+        }
+
         public static function normalize( $input ) {
             if ( ! is_array( $input ) ) {
                 return null;
