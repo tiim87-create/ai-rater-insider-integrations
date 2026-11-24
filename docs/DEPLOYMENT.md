@@ -40,3 +40,9 @@ The plugin is experimental and currently captures no data. Tests validate the *p
 - Code review confirms capture is **disabled by default**, unless a server-side `ARI_NTA_CAPTURE_ENABLED === true` constant is explicitly configured (we have not configured it).
 - Attempted read-only unauthenticated URL checks for `/wp-json/ari-nta/v1/reports` and `/diagnostic`, but external web/network tools did **not** return an HTTP response (web inaccessible; local runtime DNS blocked). **Do not claim the unauthenticated endpoints were successfully tested.**
 - Next gate: verify both endpoints return **401/403** anonymously, verify privileged diagnostic works, verify Jetpack hook provenance and key mapping, then complete a safe staging test. Do not enable capture before these checks.
+
+## Anonymous endpoint test confirmed by site owner — 2026-11-24
+- Owner opened `https://airaterinsider.com/wp-json/ari-nta/v1/reports` in an unauthenticated/incognito session.
+- Observed exact response: `{"code":"rest_forbidden","message":"Sorry, you are not allowed to do that.","data":{"status":401}}`.
+- **Pass: unauthenticated access to private reports is denied.** This alone does NOT verify protection against other logged-in roles or verify the privileged diagnostic endpoint. Capture remains disabled.
+- Next: admin-only read-only diagnostic `https://airaterinsider.com/wp-json/ari-nta/v1/diagnostic?feedback_id=1208` to inspect provenance boolean and metadata **key names only**, followed by staged Jetpack hook mapping. If browser login is via WordPress.com SSO, REST authentication may require a nonce and opening the endpoint directly can return 401 even for an administrator.
