@@ -31,3 +31,13 @@ $x=entry();$x['Days attempted to work']='0';$x['Days with NTA']='0';
 expect(ARI_NTA_Schema::normalize($x)===null,'paid hours without attempts rejected');
 $x=entry();$x['Project']='<script>';
 expect(ARI_NTA_Schema::normalize($x)===null,'unknown category rejected');
+
+$x=entry();$indexed=array();$i=0;
+foreach($x as $key=>$value){$indexed[(string)$i.'_'.$key]=$value;$i++;}
+expect(ARI_NTA_Schema::from_jetpack($indexed)!==null,'Jetpack indexed labels normalized');
+$shape=ARI_NTA_Schema::field_shape($indexed);
+expect($shape['count']===11 && !$shape['duplicates'],'Jetpack indexed labels shape recognizes 11');
+$indexed['999_Project']='ads_quality';
+expect(ARI_NTA_Schema::from_jetpack($indexed)===null,'duplicate Jetpack labels rejected');
+$indexed=array('4_Project'=>'search_quality',' IP Address'=>'private');
+expect(ARI_NTA_Schema::field_shape($indexed)['count']===1,'unknown private keys ignored');
