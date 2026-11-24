@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.0
+ * Version: 0.1.1
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -17,6 +17,7 @@ final class ARI_NTA_Bridge {
 
     public static function init() {
         add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+        add_action( 'admin_menu', array( __CLASS__, 'register_admin_page' ) );
         add_action( 'grunion_after_feedback_post_inserted', array( __CLASS__, 'on_feedback' ), 20, 4 );
     }
 
@@ -131,6 +132,56 @@ final class ARI_NTA_Bridge {
         }
         return rest_ensure_response($result);
     }
+    /**
+     * Read-only diagnostics inside wp-admin, without browser REST nonce issues.
+     * No answer values, file references, cookies, tokens or visitor identifiers.
+     */
+    public static function register_admin_page() {
+        add_management_page(
+            'NTA Bridge Diagnostics',
+            'NTA Bridge Diagnostics',
+            'manage_options',
+            'ari-nta-diagnostics',
+            array( __CLASS__, 'admin_diagnostics' )
+        );
+    }
+
+    public static function admin_diagnostics() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'Insufficient permissions.' ) );
+        }
+        echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
+        echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
+        echo '<table class="widefat striped"><tbody>';
+        echo '<tr><th scope="row">Version</th><td>0.1.1 (staged)</td></tr>';
+        echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
+        echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
+        echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
+        echo '</tbody></table>';
+        foreach ( array(1208, 1201) as $feedback_id ) {
+            echo '<h2>Historical test response #' . esc_html( (string) $feedback_id ) . '</h2>';
+            if ( get_post_type( $feedback_id ) !== 'feedback' ) {
+                echo '<p>Response not found or no longer accessible.</p>';
+                continue;
+            }
+            $form_value = get_post_meta( $feedback_id, '_feedback_form_id', true );
+            $source_value = get_post_meta( $feedback_id, '_feedback_post_id', true );
+            $keys = array_keys( get_post_meta( $feedback_id ) );
+            $safe_keys = array_values( array_filter( $keys, static function( $k ) {
+                return strpos( $k, '_feedback_' ) === 0;
+            } ) );
+            echo '<ul>';
+            echo '<li>Form metadata key present: ' . ( $form_value !== '' ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Matches expected form ID: ' . ( (string) $form_value === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Page metadata key present: ' . ( $source_value !== '' ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Matches expected source page: ' . ( (string) $source_value === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Current source verification rule matches: ' . ( self::source_verified( $feedback_id ) ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Feedback metadata key names: ' . ( $safe_keys ? esc_html( implode( ', ', $safe_keys ) ) : 'None found' ) . '</li>';
+            echo '</ul>';
+        }
+        echo '<p>Do not enable capture until source attribution and Jetpack field-label mapping are verified.</p></div>';
+    }
+
 }
 register_activation_hook(__FILE__,array('ARI_NTA_Bridge','activate'));
 ARI_NTA_Bridge::init();
