@@ -1,0 +1,30 @@
+name: NTA REST API smoke test
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "public checks (no secrets), or authenticated (requires two Actions secrets)"
+        required: true
+        default: public
+        type: choice
+        options:
+          - public
+          - authenticated
+  push:
+    paths:
+      - ".github/workflows/nta-rest-smoke.yml"
+      - "tests/nta-rest-smoke.py"
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    env:
+      NTA_SMOKE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'public' }}
+      NTA_WP_USERNAME: ${{ secrets.NTA_WP_USERNAME }}
+      NTA_WP_APP_PASSWORD: ${{ secrets.NTA_WP_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute read-only smoke checks
+        run: python3 -B tests/nta-rest-smoke.py
