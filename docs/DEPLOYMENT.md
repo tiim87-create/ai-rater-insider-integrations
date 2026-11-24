@@ -31,3 +31,12 @@ The plugin is experimental and currently captures no data. Tests validate the *p
 - Verified through WordPress installed-plugin inventory: **AI Rater Insider — NTA Bridge** version **0.1.0**, plugin file `ai-rater-insider-integrations/ari-nta-bridge`, status **inactive**, `can_activate=true`.
 - Actual deployment destination name is different from the originally suggested `ari-nta-bridge`, and this **works** because WordPress discovers the plugin header in the root PHP file. Do not change destination to match file basename.
 - No activation, REST endpoint exposure, data capture or secret configuration has been performed. The next gate is a staged diagnostic and correct Jetpack hook/meta provenance validation before enabling capture.
+
+
+## Plugin activation checkpoint — 2026-11-24
+- Called WordPress.com plugin activation for `ai-rater-insider-integrations/ari-nta-bridge` on `airaterinsider.com`.
+- WordPress confirmed **status=activated**, plugin name **AI Rater Insider — NTA Bridge**, version **0.1.0**.
+- Independently re-listed installed plugins and confirmed status **active**, `can_deactivate=true`.
+- Code review confirms capture is **disabled by default**, unless a server-side `ARI_NTA_CAPTURE_ENABLED === true` constant is explicitly configured (we have not configured it).
+- Attempted read-only unauthenticated URL checks for `/wp-json/ari-nta/v1/reports` and `/diagnostic`, but external web/network tools did **not** return an HTTP response (web inaccessible; local runtime DNS blocked). **Do not claim the unauthenticated endpoints were successfully tested.**
+- Next gate: verify both endpoints return **401/403** anonymously, verify privileged diagnostic works, verify Jetpack hook provenance and key mapping, then complete a safe staging test. Do not enable capture before these checks.
