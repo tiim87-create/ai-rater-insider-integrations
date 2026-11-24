@@ -23,3 +23,11 @@ The plugin is experimental and currently captures no data. Tests validate the *p
 - Attempted to register manual WordPress.com GitHub Deployment targeting `/wp-content/plugins/ari-nta-bridge` (auto deploy off). **WordPress refused without changing site state:** its WordPress.com account lacks a connected GitHub account / installed WordPress.com GitHub app for this repo.
 - Owner must open https://my.wordpress.com/sites/airaterinsider.com/settings/repositories, connect GitHub, and grant the WordPress.com GitHub app access to the `tiim87-create/ai-rater-insider-integrations` repository. Do not broadly grant all repositories if specific selection is available.
 - After user connects, retry deployment registration with the deployment-only branch and manual mode; **do not trigger deployment or activate plugin** until Jetpack hook/provenance and access control have been tested.
+
+
+## Verified first WordPress.com deployment — 2026-11-24
+- WordPress deployment connection ID **9802** points to `tiim87-create/ai-rater-insider-integrations`, branch `deploy/ari-nta-bridge`, destination `/wp-content/plugins/ai-rater-insider-integrations`, auto deploy **off**.
+- Manual run **293576** succeeded at 2026-11-24 14:13:51 UTC; deployed commit `a33c70e24e2960d0e01e8d575e03ebbc90dccdde`.
+- Verified through WordPress installed-plugin inventory: **AI Rater Insider — NTA Bridge** version **0.1.0**, plugin file `ai-rater-insider-integrations/ari-nta-bridge`, status **inactive**, `can_activate=true`.
+- Actual deployment destination name is different from the originally suggested `ari-nta-bridge`, and this **works** because WordPress discovers the plugin header in the root PHP file. Do not change destination to match file basename.
+- No activation, REST endpoint exposure, data capture or secret configuration has been performed. The next gate is a staged diagnostic and correct Jetpack hook/meta provenance validation before enabling capture.
