@@ -59,6 +59,81 @@ if ( ! class_exists( 'ARI_NTA_Schema', false ) ) {
                 'duplicates'=>$duplicates);
         }
 
+        /**
+         * Admin-only validation diagnostics without exposing field values.
+         * Only the 11 explicitly allowlisted labels are ever represented.
+         */
+        public static function validate_shape_and_values( $input ) {
+            $valid = array_fill_keys( self::FIELDS, false );
+            $flags = array(
+                'duplicate_labels' => false,
+                'nta_exceeds_attempted' => false,
+                'paid_hours_without_attempts' => false,
+            );
+            if ( ! is_array($input) ) return array('valid'=>$valid, 'flags'=>$flags);
+            $mapped = array();
+            foreach ($input as $key=>$value) {
+                if (!is_string($key)) continue;
+                $label = $key;
+                if (!in_array($label,self::FIELDS,true)) {
+                    if (!preg_match('/^[0-9]+_(.+)$/D',$key,$m)) continue;
+                    $label = $m[1];
+                }
+                if (!in_array($label,self::FIELDS,true)) continue;
+                if (array_key_exists($label,$mapped)) {
+                    $flags['duplicate_labels'] = true;
+                    continue;
+                }
+                $mapped[$label]=$value;
+            }
+            if ($flags['duplicate_labels']) return array('valid'=>$valid,'flags'=>$flags);
+            foreach (self::FIELDS as $label) {
+                if (!array_key_exists($label,$mapped)) continue;
+                $value = $mapped[$label];
+                if ((!is_string($value) && !is_numeric($value))) continue;
+                $v = trim((string)$value);
+                if ($v==='' || strlen($v)>100) continue;
+                switch ($label) {
+                    case 'Project':
+                        $valid[$label]=in_array($v,array('search_quality','ads_quality'),true);break;
+                    case 'Vendor':
+                        $valid[$label]=in_array($v,array('telus','welodata','rws','other'),true);break;
+                    case 'Country (ISO code)':
+                        $valid[$label]=(bool)preg_match('/^[A-Z]{2}$/D',$v);break;
+                    case 'Project language / locale':
+                        $valid[$label]=(bool)preg_match('/^[a-z]{2,3}(?:-[A-Z]{2})?$/D',$v);break;
+                    case 'Week beginning Monday':
+                        $date=DateTimeImmutable::createFromFormat('!Y-m-d',$v);
+                        $valid[$label]=(bool)(preg_match('/^20\\d\\d-\\d\\d-\\d\\d$/D',$v) &&
+                          $date && $date->format('Y-m-d')===$v &&
+                          (int)$date->format('N')===1 && $v>='2026-12-07');break;
+                    case 'Days attempted to work':
+                    case 'Days with NTA':
+                        $valid[$label]=(bool)preg_match('/^[0-7]$/D',$v);break;
+                    case 'Completed paid-equivalent hours (0.5-hour steps)':
+                        $valid[$label]=(bool)preg_match('/^(?:\\d{1,2}(?:\\.[05])?|100(?:\\.0)?)$/D',$v) &&
+                          (float)$v<=100;break;
+                    case 'How are hours measured?':
+                        $valid[$label]=in_array($v,array('payroll','vendor_report','task_aet_estimate','self_estimate'),true);break;
+                    case 'Source of weekly figures':
+                        $valid[$label]=in_array($v,array('platform_record','time_log','memory_estimate'),true);break;
+                    case 'Account access status':
+                        $valid[$label]=in_array($v,array('active','quality_hold'),true);break;
+                }
+            }
+            if ($valid['Days attempted to work'] && $valid['Days with NTA']) {
+                $flags['nta_exceeds_attempted'] =
+                    (int)$mapped['Days with NTA']>(int)$mapped['Days attempted to work'];
+            }
+            if ($valid['Days attempted to work'] &&
+                $valid['Completed paid-equivalent hours (0.5-hour steps)']) {
+                $flags['paid_hours_without_attempts'] =
+                    (int)$mapped['Days attempted to work']===0 &&
+                    (float)$mapped['Completed paid-equivalent hours (0.5-hour steps)']>0;
+            }
+            return array('valid'=>$valid,'flags'=>$flags);
+        }
+
         public static function normalize( $input ) {
             if ( ! is_array( $input ) ) {
                 return null;
