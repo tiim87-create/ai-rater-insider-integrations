@@ -193,7 +193,7 @@ final class ARI_NTA_Bridge {
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
         echo '</tbody></table>';
-        foreach ( array(1208, 1201) as $feedback_id ) {
+        foreach ( array(1213, 1212, 1208, 1201) as $feedback_id ) {
             echo '<h2>Historical test response #' . esc_html( (string) $feedback_id ) . '</h2>';
             if ( get_post_type( $feedback_id ) !== 'feedback' ) {
                 echo '<p>Response not found or no longer accessible.</p>';
@@ -225,6 +225,15 @@ final class ARI_NTA_Bridge {
             echo '<li>Stored extra-field labels recognized: ' . esc_html( (string) $stored_shape['count'] ) . ' / 11</li>';
             echo '<li>Stored extra-field labels duplicated: ' . ( $stored_shape['duplicates'] ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Stored extra fields pass schema: ' . ( ARI_NTA_Schema::from_jetpack($stored) !== null ? 'Yes' : 'No' ) . '</li>';
+            $stored_validation = ARI_NTA_Schema::validate_shape_and_values($stored);
+            foreach( ARI_NTA_Schema::FIELDS as $diagnostic_label ) {
+                echo '<li>Saved field validity — ' . esc_html($diagnostic_label) . ': ' .
+                    ( ! empty($stored_validation['valid'][$diagnostic_label]) ? 'Valid' : 'Invalid' ) . '</li>';
+            }
+            foreach ( array('duplicate_labels','nta_exceeds_attempted','paid_hours_without_attempts') as $rule ) {
+                echo '<li>Saved cross-field check — ' . esc_html($rule) . ': ' .
+                    ( ! empty($stored_validation['flags'][$rule]) ? 'FAILED' : 'Not failed' ) . '</li>';
+            }
             foreach ( ARI_NTA_Schema::FIELDS as $safe_label ) {
                 echo '<li>Stored ' . esc_html($safe_label) . ': ' .
                     ( ! empty($stored_shape['present'][$safe_label]) ? 'Present' : 'Missing' ) . '</li>';
