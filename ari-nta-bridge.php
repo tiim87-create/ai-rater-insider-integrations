@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.6
+ * Version: 0.1.7
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -77,6 +77,7 @@ final class ARI_NTA_Bridge {
         $stored = get_post_meta( $feedback_id, '_feedback_extra_fields', true );
         $shape = ARI_NTA_Schema::field_shape( $stored );
         $clean = ARI_NTA_Schema::from_jetpack( $stored );
+        $validation = ARI_NTA_Schema::validate_shape_and_values( $stored );
 
         // Diagnostic contains ONLY permitted field names, boolean presence,
         // and counts; never response values, IDs, IPs or submission metadata.
@@ -88,6 +89,8 @@ final class ARI_NTA_Bridge {
             'present' => $shape['present'],
             'duplicate_labels' => $shape['duplicates'],
             'passes_normalizer' => $clean !== null,
+            'field_value_valid' => $validation['valid'],
+            'cross_field_flags' => $validation['flags'],
         ), false );
 
         // Data capture remains disabled until separately enabled on server.
@@ -185,12 +188,12 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.6 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.7 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
         echo '</tbody></table>';
-        foreach ( array(1208, 1201) as $feedback_id ) {
+        foreach ( array(1213, 1212, 1208, 1201) as $feedback_id ) {
             echo '<h2>Historical test response #' . esc_html( (string) $feedback_id ) . '</h2>';
             if ( get_post_type( $feedback_id ) !== 'feedback' ) {
                 echo '<p>Response not found or no longer accessible.</p>';
@@ -222,6 +225,15 @@ final class ARI_NTA_Bridge {
             echo '<li>Stored extra-field labels recognized: ' . esc_html( (string) $stored_shape['count'] ) . ' / 11</li>';
             echo '<li>Stored extra-field labels duplicated: ' . ( $stored_shape['duplicates'] ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Stored extra fields pass schema: ' . ( ARI_NTA_Schema::from_jetpack($stored) !== null ? 'Yes' : 'No' ) . '</li>';
+            $stored_validation = ARI_NTA_Schema::validate_shape_and_values($stored);
+            foreach( ARI_NTA_Schema::FIELDS as $diagnostic_label ) {
+                echo '<li>Saved field validity — ' . esc_html($diagnostic_label) . ': ' .
+                    ( ! empty($stored_validation['valid'][$diagnostic_label]) ? 'Valid' : 'Invalid' ) . '</li>';
+            }
+            foreach ( array('duplicate_labels','nta_exceeds_attempted','paid_hours_without_attempts') as $rule ) {
+                echo '<li>Saved cross-field check — ' . esc_html($rule) . ': ' .
+                    ( ! empty($stored_validation['flags'][$rule]) ? 'FAILED' : 'Not failed' ) . '</li>';
+            }
             foreach ( ARI_NTA_Schema::FIELDS as $safe_label ) {
                 echo '<li>Stored ' . esc_html($safe_label) . ': ' .
                     ( ! empty($stored_shape['present'][$safe_label]) ? 'Present' : 'Missing' ) . '</li>';
@@ -237,6 +249,16 @@ final class ARI_NTA_Bridge {
             echo '<p>Saved extra fields is an array: ' . ( ! empty($shape['entry_values_is_array']) ? 'Yes' : 'No' ) . '</p>';
             echo '<p>Recognized field labels: ' . esc_html( (string) ($shape['expected_fields_present'] ?? 0) ) . ' / 11</p>';
             echo '<p>Entire payload passes schema: ' . ( ! empty($shape['passes_normalizer']) ? 'Yes' : 'No' ) . '</p>';
+            echo '<h3>Per-field validity (no values)</h3>';
+            $validity = isset($shape['field_value_valid']) && is_array($shape['field_value_valid']) ? $shape['field_value_valid'] : array();
+            foreach ( ARI_NTA_Schema::FIELDS as $label ) {
+                echo '<p>' . esc_html($label) . ': ' . ( ! empty($validity[$label]) ? 'Valid' : 'Invalid or not tested' ) . '</p>';
+            }
+            echo '<h3>Cross-field rules</h3>';
+            $flags = isset($shape['cross_field_flags']) && is_array($shape['cross_field_flags']) ? $shape['cross_field_flags'] : array();
+            foreach ( array('duplicate_labels','nta_exceeds_attempted','paid_hours_without_attempts') as $rule ) {
+                echo '<p>' . esc_html($rule) . ': ' . ( ! empty($flags[$rule]) ? 'FAILED' : 'Not failed' ) . '</p>';
+            }
             echo '<ul>';
             $present = isset($shape['present']) && is_array($shape['present']) ? $shape['present'] : array();
             foreach ( ARI_NTA_Schema::FIELDS as $label ) {
