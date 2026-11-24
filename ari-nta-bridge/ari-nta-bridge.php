@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.9
+ * Version: 0.2.0
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -110,6 +110,25 @@ final class ARI_NTA_Bridge {
     }
 
     public static function register_routes() {
+        // Temporary transport-only diagnostic. Client sends literal
+        // "Authorization: ARIProbe v1" (NEVER an actual password).
+        // Reports only whether that exact harmless header survived the proxy.
+        // No authentication, user, secret or request metadata is returned.
+        register_rest_route('ari-nta/v1','/transport-check',array(
+            'methods'=>'GET',
+            'permission_callback'=>'__return_true',
+            'callback'=>static function() {
+                $one = isset($_SERVER['HTTP_AUTHORIZATION']) &&
+                    $_SERVER['HTTP_AUTHORIZATION'] === 'ARIProbe v1';
+                $two = isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) &&
+                    $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] === 'ARIProbe v1';
+                return rest_ensure_response(array(
+                    'probe_header_arrived'=>($one || $two),
+                    'via_http_authorization'=>$one,
+                    'via_redirect_http_authorization'=>$two,
+                ));
+            },
+        ));
         // Diagnostic endpoint returns no identity, token or private data.
         // It distinguishes core authentication from the NTA permission check.
         register_rest_route('ari-nta/v1','/auth-check',array(
@@ -206,7 +225,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.9 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.2.0 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
