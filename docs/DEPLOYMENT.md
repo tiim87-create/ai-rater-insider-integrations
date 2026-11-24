@@ -81,3 +81,12 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - GitHub main commit `1f1bdbbcfdcf8d31b8b0009a682d09e6b8bd28d0`; deployment branch commit `f53d8fedfbb2fe9fbb8474fc22afedf400980fe5`.
 - Deployment connection 9802, run **293613**: **success**, finished 2026-11-24 14:42:44 UTC; WordPress plugin inventory confirmed **v0.1.4 active**.
 - Next proof: submit one explicitly synthetic response on **page 1200** after deployment, then inspect last-hook booleans. If no hook observed, inspect Jetpack hook signature and callback argument order before enabling capture. If labels missing, build a parser using real verified hook structure, not guesses.
+
+## Jetpack field-hook shape diagnosis — 2026-11-24 (v0.1.5)
+- Actual user report from v0.1.4 admin page: `Hook observed: Yes`, fourth hook argument array **Yes**, recognized labels **0/11**, normalize **No**. Thus the callback executes for the correct source page, but fourth argument is **not flat values keyed by the 11 dropdown labels**.
+- Implemented limited alternative recognition for prefix-indexed field keys (`0_Project` etc.) in `ARI_NTA_Schema::from_jetpack` with duplicate collision rejection. This is only a hypothesis, not yet verified against live data.
+- Added read-only admin diagnostics from **saved Jetpack `_feedback_extra_fields`** of existing test responses #1201 and #1208: only whitelist field-presence yes/no, count, duplicate count and schema validity. The values and unrecognized key names are **never displayed**.
+- The hook field-shape observer likewise recognizes prefix-indexed keys; it only stores safe allowlist-presence booleans.
+- Main commits: schema `651d31195d285f74ae4e26a0ccb049b12768cdd5`, bridge `36a98e150dcd92526edc7d324d4e5f8f980d3888`, tests `0d250a8bbcaafc5e6f789b8b60b3773da7b09201`.
+- Deployment branch commit `63e3dca096c8f39b3c731241d81a3d397df93500`. WordPress deployment **293628 success** 2026-11-24 15:00:19 UTC. Plugin inventory confirmed **v0.1.5 active**. Main GitHub Actions run **45420036681 success**, covering added schema tests and syntax.
+- **Capture remains disabled**. Do not enable until the saved-extra-fields diagnostics clarify the actual structure and live hook values are verified, and the independent Python normalization/export pipeline is wired.
