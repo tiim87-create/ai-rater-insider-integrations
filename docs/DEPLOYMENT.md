@@ -72,3 +72,12 @@ Site owner's admin diagnostics for historical feedback #1208 and #1201 show neit
 - Main commit `860fde0441c282e8847960cea0bcae0fc6278823`; deployment commit `7b5a468a5433cf9ab01a1cedabc23a14a46d2d0d`. Deployment run **293597** reported **success** at 2026-11-24 14:29:42 UTC. Plugin inventory confirmed **v0.1.3 active**.
 - Capture continues **disabled** by default. The saved responses can be used to verify the updated attribution booleans via admin diagnostics, but they are not and must not be imported into the statistical feed.
 - Still unverified: `grunion_after_feedback_post_inserted` fourth argument mapping to the 11 expected labels; any missing matching field must fail closed. Need staged proof before capture activation.
+
+## Live Jetpack hook field-shape probe — 2026-11-24 (v0.1.4)
+- User's admin diagnostics confirmed both feedback records **1201 and 1208** pass `source_verified()`, using `_feedback_source_post_id=1200`.
+- Added privacy-limited observer in `grunion_after_feedback_post_inserted`. For a **new** submission associated with page 1200, it stores only 11 whitelisted field-label presence booleans, count, whether the fourth hook argument is an array, and whether the whole payload passes the current 11-field schema. It does **not** store actual answers, IDs, URLs, IP addresses, email or file data in the diagnostic option.
+- The actual response capture flag `ARI_NTA_CAPTURE_ENABLED` remains **OFF**; observers cannot publish data or activate capture.
+- Admin-only `Tools → NTA Bridge Diagnostics` displays the last hook's shape. Old answers do not retroactively trigger the hook: a **new November test submission** is needed to exercise this probe.
+- GitHub main commit `1f1bdbbcfdcf8d31b8b0009a682d09e6b8bd28d0`; deployment branch commit `f53d8fedfbb2fe9fbb8474fc22afedf400980fe5`.
+- Deployment connection 9802, run **293613**: **success**, finished 2026-11-24 14:42:44 UTC; WordPress plugin inventory confirmed **v0.1.4 active**.
+- Next proof: submit one explicitly synthetic response on **page 1200** after deployment, then inspect last-hook booleans. If no hook observed, inspect Jetpack hook signature and callback argument order before enabling capture. If labels missing, build a parser using real verified hook structure, not guesses.
