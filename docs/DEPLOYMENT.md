@@ -46,3 +46,12 @@ The plugin is experimental and currently captures no data. Tests validate the *p
 - Observed exact response: `{"code":"rest_forbidden","message":"Sorry, you are not allowed to do that.","data":{"status":401}}`.
 - **Pass: unauthenticated access to private reports is denied.** This alone does NOT verify protection against other logged-in roles or verify the privileged diagnostic endpoint. Capture remains disabled.
 - Next: admin-only read-only diagnostic `https://airaterinsider.com/wp-json/ari-nta/v1/diagnostic?feedback_id=1208` to inspect provenance boolean and metadata **key names only**, followed by staged Jetpack hook mapping. If browser login is via WordPress.com SSO, REST authentication may require a nonce and opening the endpoint directly can return 401 even for an administrator.
+
+## Admin diagnostic deployed — 2026-11-24
+- Previous direct REST diagnostic URL showed `rest_forbidden` status 401 to logged-in visitor (cookie-authenticated REST nonce is not necessarily available from direct browser navigation).
+- Introduced `Tools → NTA Bridge Diagnostics` with `manage_options` protection, read-only checks of feedback IDs 1208 and 1201. It displays form/page attribution booleans and metadata key names only, **not** values, response content, IPs, browser details, or files.
+- Main branch commit `1fa545fc1817e489316fb34695b3d28e43d669f6`; deployment branch `fc8c3aca8bb18063b59cf9cc65bf9a108f4cb423`.
+- WordPress deployment ID 9802 run **293584** completed **success** at 2026-11-24 14:22 UTC.
+- WordPress installed plugin inventory independently confirmed **0.1.1 active**.
+- **Capture remains disabled.** No responses published or exported.
+- Admin should visit `https://airaterinsider.com/wp-admin/tools.php?page=ari-nta-diagnostics` and report provenance booleans. Do not enable capture until Jetpack hook arguments and exact source metadata are validated.
