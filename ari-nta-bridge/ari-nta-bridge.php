@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AI Rater Insider — NTA Bridge
  * Description: Staged, private weekly NTA data bridge. Capture is disabled until explicitly enabled and verified.
- * Version: 0.1.5
+ * Version: 0.1.6
  * Requires PHP: 7.4
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -52,48 +52,55 @@ final class ARI_NTA_Bridge {
     }
 
     /**
-     * Observe only the shape of one Jetpack hook payload, never its values.
-     * This remains enabled in staging while the report capture flag stays OFF.
-     * Only the allowlisted 11 expected labels are considered.
+     * Jetpack may provide hook arguments in a different internal shape than
+     * the persisted dropdown values. Defer processing until shutdown so the
+     * saved _feedback_extra_fields meta has finished writing.
+     *
+     * Never copy raw or unknown fields into our separate table or diagnostics.
      */
-    private static function observe_field_shape( $entry_values ) {
-        $is_array = is_array( $entry_values );
-        $observed = ARI_NTA_Schema::field_shape( $entry_values );
-        $shape = array(
-            'hook_seen' => true,
-            'entry_values_is_array' => $is_array,
-            'expected_fields_present' => $observed['count'],
-            'expected_fields_total' => count( ARI_NTA_Schema::FIELDS ),
-            'present' => $observed['present'],
-            'duplicate_labels' => $observed['duplicates'],
-            'passes_normalizer' => ARI_NTA_Schema::from_jetpack( $entry_values ) !== null,
-        );
-        // Only booleans and aggregate counts; no visitor data, values, or IDs.
-        update_option( 'ari_nta_last_hook_shape', $shape, false );
-    }
-
     public static function on_feedback( $feedback_id, $visible_fields, $is_spam, $entry_values ) {
         if ( $is_spam || ! is_numeric($feedback_id) ) return;
         $feedback_id = (int) $feedback_id;
-        if ( $feedback_id <= 0 || get_post_type($feedback_id) !== 'feedback' ||
-            ! self::source_verified($feedback_id) ) return;
-        // Field-shape probe stores only whitelist-name presence, not field values.
-        self::observe_field_shape( $entry_values );
-        if ( ! self::capture_enabled() ) return;
-        $post = get_post($feedback_id);
-        if ( ! $post || substr($post->post_date,0,10) < self::LAUNCH_DATE ) return;
+        if ( $feedback_id <= 0 ) return;
 
-        // Deliberately accept only field-label keys; no fallback to arbitrary
-        // Jetpack post_content, attachments, identity or technical metadata.
-        $clean = ARI_NTA_Schema::from_jetpack($entry_values);
-        if ( ! $clean ) return;
+        add_action( 'shutdown', static function() use ( $feedback_id ) {
+            ARI_NTA_Bridge::process_saved_feedback( $feedback_id );
+        }, 20 );
+    }
+
+    public static function process_saved_feedback( $feedback_id ) {
+        if ( get_post_type($feedback_id) !== 'feedback' ||
+            ! self::source_verified($feedback_id) ) return;
+
+        // The source key, not the fourth hook argument, was verified on
+        // both actual NTA feedback records #1201 and #1208.
+        $stored = get_post_meta( $feedback_id, '_feedback_extra_fields', true );
+        $shape = ARI_NTA_Schema::field_shape( $stored );
+        $clean = ARI_NTA_Schema::from_jetpack( $stored );
+
+        // Diagnostic contains ONLY permitted field names, boolean presence,
+        // and counts; never response values, IDs, IPs or submission metadata.
+        update_option( 'ari_nta_last_hook_shape', array(
+            'hook_seen' => true,
+            'entry_values_is_array' => is_array($stored),
+            'expected_fields_present' => $shape['count'],
+            'expected_fields_total' => count( ARI_NTA_Schema::FIELDS ),
+            'present' => $shape['present'],
+            'duplicate_labels' => $shape['duplicates'],
+            'passes_normalizer' => $clean !== null,
+        ), false );
+
+        // Data capture remains disabled until separately enabled on server.
+        if ( ! self::capture_enabled() || $clean === null ) return;
+        $post = get_post( $feedback_id );
+        if ( ! $post || substr($post->post_date,0,10) < self::LAUNCH_DATE ) return;
         global $wpdb;
         $wpdb->insert( $wpdb->prefix . self::TABLE, array(
             'feedback_id' => $feedback_id,
             'created_at' => $post->post_date,
-            'payload' => wp_json_encode($clean)
+            'payload' => wp_json_encode($clean),
         ), array('%d','%s','%s') );
-        // Duplicate feedback_id fails the primary-key constraint; no overwrite.
+        // The primary key prevents duplicate imports.
     }
 
     public static function register_routes() {
@@ -178,7 +185,7 @@ final class ARI_NTA_Bridge {
         echo '<div class="wrap"><h1>NTA Bridge Diagnostics</h1>';
         echo '<p>Read-only technical checks. No response values or personal metadata are displayed.</p>';
         echo '<table class="widefat striped"><tbody>';
-        echo '<tr><th scope="row">Version</th><td>0.1.5 (staged)</td></tr>';
+        echo '<tr><th scope="row">Version</th><td>0.1.6 (staged)</td></tr>';
         echo '<tr><th scope="row">Capture enabled</th><td>' . ( self::capture_enabled() ? 'Yes' : 'No' ) . '</td></tr>';
         echo '<tr><th scope="row">Expected reusable form</th><td>' . esc_html( (string) self::EXPECTED_FORM ) . '</td></tr>';
         echo '<tr><th scope="row">Expected source page</th><td>' . esc_html( (string) self::EXPECTED_PAGE ) . '</td></tr>';
@@ -227,7 +234,7 @@ final class ARI_NTA_Bridge {
             echo '<p>No matching Jetpack hook has been observed since this probe was installed.</p>';
         } else {
             echo '<p>Hook observed: Yes</p>';
-            echo '<p>Fourth argument is an array: ' . ( ! empty($shape['entry_values_is_array']) ? 'Yes' : 'No' ) . '</p>';
+            echo '<p>Saved extra fields is an array: ' . ( ! empty($shape['entry_values_is_array']) ? 'Yes' : 'No' ) . '</p>';
             echo '<p>Recognized field labels: ' . esc_html( (string) ($shape['expected_fields_present'] ?? 0) ) . ' / 11</p>';
             echo '<p>Entire payload passes schema: ' . ( ! empty($shape['passes_normalizer']) ? 'Yes' : 'No' ) . '</p>';
             echo '<ul>';
