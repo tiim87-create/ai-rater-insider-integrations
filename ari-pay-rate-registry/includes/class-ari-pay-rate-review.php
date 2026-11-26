@@ -32,8 +32,18 @@ final class ARI_Pay_Rate_Review {
                 $label = $match[1];
             }
             if (!in_array($label,self::FIELDS,true)) continue;
-            if (array_key_exists($label,$fields) || (!is_string($value) && !is_numeric($value))) return null;
+            if (array_key_exists($label,$fields)) return null; // Fail on duplicate label variants.
+            if ($label==='Permission to process anonymous rate facts' && is_array($value)) {
+                // Jetpack checkbox fields may be represented as a one-element array.
+                if (count($value)!==1 || !isset($value[0]) || !is_string($value[0])) return null;
+                $value=$value[0];
+            }
+            if (!is_string($value) && !is_numeric($value)) return null;
             $fields[$label] = trim((string)$value);
+        }
+        // Unchecked optional Jetpack fields can be omitted altogether.
+        foreach (array('Public Source URL optional','Evidence Context optional') as $optional) {
+            if (!array_key_exists($optional,$fields)) $fields[$optional]='';
         }
         foreach(self::FIELDS as $field) {
             if (!array_key_exists($field,$fields)) return null;
