@@ -16,3 +16,5 @@ jobs:
           php tests/test-schema.php
           php tests/test-capture-gate.php
           php tests/test-capture-enabled.php
+      - name: Validate synthetic public NTA aggregate privacy rules
+        run: python3 -B tests/test-aggregate-nta.py
