@@ -59,6 +59,10 @@ $GLOBALS['nta_test_source'] = '1204';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 expect_gate(count($GLOBALS['nta_test_options'])===0, 'incorrect Jetpack source ignored');
 
+$GLOBALS['nta_test_source'] = '1175';
+ARI_NTA_Bridge::process_saved_feedback(99901);
+expect_gate(count($GLOBALS['nta_test_options'])===0, 'dashboard page 1175 not yet authorized as Jetpack source');
+
 $GLOBALS['nta_test_source'] = '1200';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 $shape = $GLOBALS['nta_test_options']['ari_nta_last_hook_shape'] ?? array();
