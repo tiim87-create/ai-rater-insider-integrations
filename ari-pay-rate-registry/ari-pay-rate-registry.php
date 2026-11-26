@@ -69,17 +69,22 @@ final class ARI_Pay_Rate_Admin {
     public static function import() {
         self::gate('ari_pay_rate_import');
         $id=isset($_POST['feedback_id'])?absint(wp_unslash($_POST['feedback_id'])):0;
-        if (!$id || get_post_type($id)!=='feedback') self::go('invalid_id');
-        if ((string)get_post_meta($id,'_feedback_source_post_id',true)!==(string)self::SOURCE_PAGE) {
-            self::go('wrong_source');
-        }
+        self::go(self::import_feedback($id));
+    }
+    /**
+     * Isolated import logic; called only after the capability, nonce and OFF-by-default gate.
+     * Exposed for synthetic unit testing. No public action or unauthenticated route.
+     */
+    public static function import_feedback($id) {
+        $id=(int)$id;
+        if ($id<=0 || get_post_type($id)!=='feedback') return 'invalid_id';
+        if ((string)get_post_meta($id,'_feedback_source_post_id',true)!==(string)self::SOURCE_PAGE) return 'wrong_source';
         $post=get_post($id);
-        if (!$post) self::go('missing_feedback');
+        if (!$post) return 'missing_feedback';
         $fields=get_post_meta($id,'_feedback_extra_fields',true);
         $claim=ARI_Pay_Rate_Review::normalize_claim($fields);
-        if (!$claim) self::go('invalid_claim');
-
-        // Deliberately keep only validated factual fields; no free-text content or source URL.
+        if (!$claim) return 'invalid_claim';
+        // Secondary database holds ONLY normalized wage facts.
         unset($claim['source_url_private'],$claim['context_private']);
         global $wpdb;
         $insert=$wpdb->insert(self::table(),array(
@@ -90,20 +95,25 @@ final class ARI_Pay_Rate_Admin {
             'reviewer_id'=>0,
             'created_at'=>$post->post_date,
         ),array('%d','%s','%s','%s','%d','%s'));
-        // Duplicate feedback IDs cannot create new pending claims or reset decisions.
-        self::go($insert===1?'imported':'not_imported');
+        // Feedback primary key protects review status against duplicate imports.
+        return $insert===1?'imported':'not_imported';
     }
     /**
-     * Status/evidence-only moderation. No public-rate publishing.
-     * "Approved" does NOT mean "approved for publication".
+     * Human moderation only. "Approved" NEVER publishes and cannot imply
+     * verified evidence if reviewer explicitly selected "unverified".
      */
     public static function review() {
         self::gate('ari_pay_rate_review');
         $id=isset($_POST['feedback_id'])?absint(wp_unslash($_POST['feedback_id'])):0;
         $status=isset($_POST['review_status'])?sanitize_key(wp_unslash($_POST['review_status'])):'';
         $level=isset($_POST['evidence_level'])?sanitize_key(wp_unslash($_POST['evidence_level'])):'';
-        if (!$id || !in_array($status,self::STATUSES,true) ||
-            !in_array($level,self::LEVELS,true)) self::go('invalid_review');
+        self::go(self::apply_review($id,$status,$level));
+    }
+    public static function apply_review($id,$status,$level) {
+        $id=(int)$id;
+        if ($id<=0 || !in_array($status,self::STATUSES,true) ||
+            !in_array($level,self::LEVELS,true) ||
+            ($status==='approved' && $level==='unverified')) return 'invalid_review';
         global $wpdb;
         $res=$wpdb->update(self::table(),array(
             'review_status'=>$status,
@@ -112,7 +122,7 @@ final class ARI_Pay_Rate_Admin {
             'reviewed_at'=>current_time('mysql'),
         ),array('feedback_id'=>$id),
           array('%s','%s','%d','%s'),array('%d'));
-        self::go($res!==false && $res>0?'reviewed':'unchanged');
+        return $res!==false && $res>0?'reviewed':'unchanged';
     }
     public static function screen() {
         if (!current_user_can('manage_options')) wp_die('Insufficient permissions.');
