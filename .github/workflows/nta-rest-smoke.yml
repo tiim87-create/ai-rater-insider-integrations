@@ -3,13 +3,19 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "public checks (no secrets), or authenticated (requires two Actions secrets)"
+        description: "public, authenticated (capture OFF), or capture-on read-only verification"
         required: true
         default: public
         type: choice
         options:
           - public
           - authenticated
+          - capture-on
+      confirm_live_read:
+        description: "For capture-on only: type yes to authorize reading one record in runner memory"
+        required: false
+        default: "no"
+        type: string
   push:
     paths:
       - ".github/workflows/nta-rest-smoke.yml"
@@ -21,6 +27,7 @@ jobs:
     permissions:
       contents: read
     env:
+      NTA_CONFIRM_LIVE_READ: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_live_read || 'no' }}
       NTA_SMOKE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'public' }}
       NTA_WP_USERNAME: ${{ secrets.NTA_WP_USERNAME }}
       NTA_WP_APP_PASSWORD: ${{ secrets.NTA_WP_APP_PASSWORD }}
