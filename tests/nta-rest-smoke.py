@@ -54,6 +54,9 @@ check("Harmless Authorization header reaches plugin",
 status, _ = request("/reports")
 check("Anonymous report access denied", status in (401, 403), status)
 
+status, _ = request("/diagnostic")
+check("Anonymous admin diagnostics denied", status in (401, 403), status)
+
 if MODE == "public":
     print("SKIP authenticated checks (public mode)")
     sys.exit(0)
@@ -76,6 +79,9 @@ check("Application Password authenticated", status == 200 and isinstance(body, d
       and body.get("authenticated") is True, status)
 check("Exporter has scoped permission", body.get("can_export_nta") is True, status)
 check("Capture remains disabled", body.get("capture_enabled") is False, status)
+
+status, _ = request("/diagnostic", auth)
+check("Exporter cannot access admin diagnostics", status in (401, 403), status)
 
 status, _ = request("/reports?page=1&per_page=1", auth)
 check("Reports safely disabled until launch", status == 409, status)
