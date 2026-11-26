@@ -12,7 +12,7 @@ require_once __DIR__ . '/includes/class-ari-nta-schema.php';
 final class ARI_NTA_Bridge {
     private const TABLE = 'ari_nta_weekly';
     private const EXPECTED_FORM = 1204;
-    private const EXPECTED_PAGE = 1200;
+    private const EXPECTED_PAGE = 1175;
     private const LAUNCH_DATE = '2026-12-01';
 
     public static function init() {
@@ -48,9 +48,10 @@ final class ARI_NTA_Bridge {
 
     private static function source_verified( $feedback_id ) {
         // Fail closed unless Jetpack metadata explicitly establishes source.
-        // Confirmed on this site against feedback #1201 and #1208:
-        // Jetpack attributes submissions to page 1200 using this metadata key.
-        // Require an exact source page match; do not accept legacy or unrelated IDs.
+        // Dashboard page 1175 embeds reusable form 1204. A 2026-11-26
+        // Jetpack response (#1252) shows this dashboard as its source in UI.
+        // Confirm exact _feedback_source_post_id via admin diagnostic before live deploy.
+        // Fail closed for legacy page 1200 and unrelated source pages.
         $source_id = get_post_meta( $feedback_id, '_feedback_source_post_id', true );
         return (string) $source_id === (string) self::EXPECTED_PAGE;
     }
@@ -327,7 +328,7 @@ final class ARI_NTA_Bridge {
             echo '<li>Page metadata key present: ' . ( $source_value !== '' ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Matches expected source page: ' . ( (string) $source_value === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Actual Jetpack source key present: ' . ( $actual_source !== '' ? 'Yes' : 'No' ) . '</li>';
-            echo '<li>Actual source equals NTA page 1200: ' . ( (string) $actual_source === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
+            echo '<li>Actual source equals expected public dashboard: ' . ( (string) $actual_source === (string) self::EXPECTED_PAGE ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Actual source equals reusable form 1204: ' . ( (string) $actual_source === (string) self::EXPECTED_FORM ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Current source verification rule matches: ' . ( self::source_verified( $feedback_id ) ? 'Yes' : 'No' ) . '</li>';
             echo '<li>Feedback metadata key names: ' . ( $safe_keys ? esc_html( implode( ', ', $safe_keys ) ) : 'None found' ) . '</li>';
