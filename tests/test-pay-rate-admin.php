@@ -90,3 +90,39 @@ assert_review($normalized!==null,'staging fields normalize');
 unset($normalized['source_url_private'],$normalized['context_private']);
 assert_review(!isset($normalized['Email'])&&!isset($normalized['IP'])&&
 !isset($normalized['context_private']),'private claim projection strips private prose and metadata');
+
+$GLOBALS['mock_meta']=valid_form();
+assert_review(ARI_Pay_Rate_Admin::import_feedback(888)==='imported','correct synthetic page imports into private queue');
+assert_review(isset($GLOBALS['wpdb']->rows[888]),'private row created');
+$row=$GLOBALS['wpdb']->rows[888];
+assert_review($row['review_status']==='pending' && $row['evidence_level']==='unverified',
+    'new claims are never approved automatically');
+$stored=json_decode($row['claim_json'],true);
+assert_review(!isset($stored['context_private'])&&!isset($stored['source_url_private']) &&
+    strpos($row['claim_json'],'private@example.invalid')===false &&
+    strpos($row['claim_json'],'192.0.2.9')===false,
+    'stored secondary record excludes private prose, URL and metadata');
+assert_review(ARI_Pay_Rate_Admin::import_feedback(888)==='not_imported' &&
+    count($GLOBALS['wpdb']->rows)===1,'duplicate response cannot reset queue item');
+$GLOBALS['source']='1200';
+assert_review(ARI_Pay_Rate_Admin::import_feedback(889)==='wrong_source','unrelated form source blocked');
+$GLOBALS['source']='1246';
+$GLOBALS['type']='page';
+assert_review(ARI_Pay_Rate_Admin::import_feedback(889)==='invalid_id','unrelated post type blocked');
+$GLOBALS['type']='feedback';
+$GLOBALS['mock_meta']['Rate Amount']='-15';
+assert_review(ARI_Pay_Rate_Admin::import_feedback(889)==='invalid_claim','invalid rate blocked from private queue');
+$GLOBALS['mock_meta']=valid_form();
+assert_review(ARI_Pay_Rate_Admin::apply_review(888,'approved','unverified')==='invalid_review',
+    'unverified evidence cannot be labeled approved');
+assert_review(ARI_Pay_Rate_Admin::apply_review(888,'approved','verified')==='reviewed',
+    'reviewer can mark validated evidence as approved');
+assert_review($GLOBALS['wpdb']->rows[888]['reviewer_id']===17 &&
+    $GLOBALS['wpdb']->rows[888]['review_status']==='approved','review retains editor attribution internally');
+assert_review(ARI_Pay_Rate_Admin::apply_review(888,'rejected','verified')==='reviewed',
+    'reviewer can reject a previously approved claim');
+assert_review(ARI_Pay_Rate_Admin::apply_review(889,'approved','verified')==='unchanged',
+    'missing claim cannot be approved');
+assert_review(ARI_Pay_Rate_Admin::apply_review(888,'approved','invalid')==='invalid_review',
+    'unknown evidence levels rejected');
+assert_review(count($GLOBALS['wpdb']->rows)===1,'only one authorized private claim exists');
