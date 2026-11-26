@@ -4,7 +4,7 @@
  * server, network, database or real respondent data is accessed.
  */
 define('ABSPATH', __DIR__ . '/');
-$GLOBALS['nta_test_source'] = '1200';
+$GLOBALS['nta_test_source'] = '1175';
 $GLOBALS['nta_test_entry'] = array();
 $GLOBALS['nta_test_options'] = array();
 $GLOBALS['nta_test_inserts'] = 0;
@@ -59,11 +59,11 @@ $GLOBALS['nta_test_source'] = '1204';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 expect_gate(count($GLOBALS['nta_test_options'])===0, 'incorrect Jetpack source ignored');
 
-$GLOBALS['nta_test_source'] = '1175';
-ARI_NTA_Bridge::process_saved_feedback(99901);
-expect_gate(count($GLOBALS['nta_test_options'])===0, 'dashboard page 1175 not yet authorized as Jetpack source');
-
 $GLOBALS['nta_test_source'] = '1200';
+ARI_NTA_Bridge::process_saved_feedback(99901);
+expect_gate(count($GLOBALS['nta_test_options'])===0, 'legacy draft page 1200 is not authorized');
+
+$GLOBALS['nta_test_source'] = '1175';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 $shape = $GLOBALS['nta_test_options']['ari_nta_last_hook_shape'] ?? array();
 expect_gate(($shape['expected_fields_present']??0)===11, '11 whitelisted labels recognized');
