@@ -33,3 +33,11 @@ Public mode runs on test-file push; authenticated mode must be dispatched manual
 **Release gate: do NOT enable production capture yet.** The plugin enforces `LAUNCH_DATE=2026-12-01`; the strict schema accepts weekly Monday dates from **2026-12-07** onward. Validate first live submission, saved Jetpack field shape 11/11, source-page provenance, cross-field rules and private retention/export destination before enabling collection. Treat prelaunch records as tests, never as production statistics.
 
 No plugin deployment, secrets exposure, live form submission, or capture-setting modification performed on 2026-11-26.
+
+## Synthetic capture-off processing checks — 2026-11-26
+
+Added `tests/test-capture-gate.php` (commit `e8de05d`) with synthetic WordPress mocks and configured `.github/workflows/php-checks.yml` (commit `642061f`) to run it with the existing schema suite. CI run [#45797310997](https://github.com/tiim87-create/ai-rater-insider-integrations/actions/runs/45797310997) succeeded; logs confirm all nineteen prior schema checks and seven new processing checks passed.
+
+Tested: unrelated post type ignored; Jetpack source 1204 rejected; approved source 1200 recognized; all 11 labels normalized; valid record does not insert into DB while capture disabled; invalid NTA > attempted rejected and diagnostic reason set; invalid record does not insert while capture disabled.
+
+These are offline code checks, **not** evidence of production capture, database persistence, or completion of real export. No plugin deployment, live submission, or config change occurred. The new authenticated negative permission check still requires a manual `workflow_dispatch` run in `authenticated` mode.
