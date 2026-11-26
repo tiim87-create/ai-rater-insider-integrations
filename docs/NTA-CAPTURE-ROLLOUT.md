@@ -32,3 +32,14 @@ Stop capture if authentication fails, anonymous access succeeds, source provenan
 
 ## Operational next step
 First prepare a **mode-aware, privacy-safe, live capture-ON smoke workflow** for step 3/5. Do not deploy or enable collection solely because the offline checks pass.
+
+## Capture-ON smoke workflow prepared — 2026-11-26
+
+The `NTA REST API smoke test` workflow now has three modes:
+- `public`: safe automatic checks without authentication.
+- `authenticated`: verifies capture OFF, valid Application Password, scoped permission, admin denial and HTTP 409 for reports.
+- `capture-on`: **manual only**; requires input `confirm_live_read=yes`, a live `capture_enabled=true` response, and reads at most one report in GitHub runner process memory. Verifies HTTP 200, response envelope, exact whitelist (`Date` plus the 11 approved fields), eligible dates and no unexpected keys. It never prints response bodies, values, dates, email, IP, account identities or secrets.
+
+**Important:** successful `capture-on` with zero rows validates endpoint availability but **does not** validate actual storage. At least one approved synthetic post-launch response must exist before declaring end-to-end capture proven. Manual live mode does **not** change WordPress settings or insert a record, and must not be invoked ahead of a controlled live test. Existing authenticated OFF-mode remains the default operational safety check.
+
+Do not enable capture or use a public GitHub Action as a long-term store for NTA submissions.
