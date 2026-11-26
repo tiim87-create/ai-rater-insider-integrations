@@ -18,5 +18,6 @@ jobs:
           php tests/test-capture-enabled.php
           php tests/test-pay-rate-review.php
           php tests/test-pay-rate-admin.php
+          php tests/test-pay-rate-admin-screen.php
       - name: Validate synthetic public NTA aggregate privacy rules
         run: python3 -B tests/test-aggregate-nta.py
