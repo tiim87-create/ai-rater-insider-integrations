@@ -71,3 +71,27 @@ check(ARI_Pay_Rate_Review::public_snapshot(array($claim,$second),$version,$date)
 $claim['review_status']='rejected';
 check(ARI_Pay_Rate_Review::public_snapshot(array($claim),$version,$date)['rates']===array(),
   'rejected claim never published');
+
+$optionalMissing=example();
+unset($optionalMissing['Public Source URL optional'],$optionalMissing['Evidence Context optional']);
+$optional=ARI_Pay_Rate_Review::normalize_claim($optionalMissing);
+check(is_array($optional) && $optional['source_url_private']==='' && $optional['context_private']==='',
+      'omitted optional Jetpack fields normalize to empty');
+$checkbox=example();
+$checkbox['Permission to process anonymous rate facts']=array(
+    'I agree to private review of my submission and understand that no identifiable information will be published.'
+);
+check(ARI_Pay_Rate_Review::normalize_claim($checkbox)!==null,
+      'one-element Jetpack checkbox array accepted');
+$checkbox['Permission to process anonymous rate facts'][]='other';
+check(ARI_Pay_Rate_Review::normalize_claim($checkbox)===null,
+      'multi-valued checkbox rejected');
+$prefixed=example();
+$prefixed['0_Project']=$prefixed['Project'];
+unset($prefixed['Project']);
+check(ARI_Pay_Rate_Review::normalize_claim($prefixed)!==null,
+      'Jetpack numeric label prefixes normalized');
+$duplicate=example();
+$duplicate['1_Project']='Ads Quality Rating';
+check(ARI_Pay_Rate_Review::normalize_claim($duplicate)===null,
+      'duplicate normalized field labels rejected');
