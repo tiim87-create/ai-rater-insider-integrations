@@ -156,3 +156,11 @@ Source: `ari-pay-rate-registry/ari-pay-rate-registry.php` with offline tests `te
 ### Current limits
 
 This implementation establishes a controlled review *interface and import logic in source code only*, not live synchronization. It is intentionally less capable than a finished product so no submitted claim can accidentally update a public wage preset.
+
+## Staging hardening — 2026-11-26
+
+The private review handlers now have testable core methods, `import_feedback()` and `apply_review()`, reachable only via the existing administrator-gated WordPress admin-post handlers. Staging claims discard optional source URLs and comments before secondary storage. Repeated Jetpack response IDs do not create new records or reset decisions. Invalid source, post type, rate, or unknown status is denied; status `approved` cannot be paired with `unverified`.
+
+The normalizer accepts absent optional fields and a single-element checkbox consent array, which are possible Jetpack payload shapes. Exact live Jetpack behavior still needs verification with a synthetic form submission, as does installation, correct table creation, and private record retention/removal.
+
+Offline CI: https://github.com/tiim87-create/ai-rater-insider-integrations/actions/runs/45863971091. **Production remains unchanged.**
