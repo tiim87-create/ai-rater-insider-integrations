@@ -129,3 +129,30 @@ The calculator should:
 ## Separation from NTA
 
 The NTA Bridge is a different project: its data measure reported task availability and its private export has its own access control. Reuse design principles, not the NTA report table, schema or export credentials.
+
+## Admin queue implementation — staged 2026-11-26
+
+Source: `ari-pay-rate-registry/ari-pay-rate-registry.php` with offline tests `tests/test-pay-rate-admin.php`.
+
+- The module registers **Tools → Pay Rate Reviews** for `manage_options` administrators. It has **no public REST route**, no automatic `feedback` hook, and no job that updates the calculator.
+- Its entire import/review write path is **disabled by default**. It requires the explicit server-side boolean `ARI_PAY_RATE_REVIEW_ENABLED === true`. The configuration has **not** been set and the plugin has **not** been deployed/activated.
+- After activation with flag enabled, a site administrator can manually import a known synthetic Jetpack `feedback` ID. Source provenance must match page **1246** and the 15-field claim must normalize. No general feedback, NTA responses or nonconforming records can enter this review table.
+- The private WordPress table `{prefix}ari_pay_rate_claims` is created via `dbDelta` on activation; `feedback_id` is a primary key (repeat imports cannot silently reset a review).
+- Import keeps normalized factual rate fields, **deliberately drops optional source URL and free-text commentary**, and stores no respondent identifiers, raw payload, file attachments or technical Jetpack metadata in this secondary table. Jetpack's original feedback remains separately private and subject to its retention controls.
+- Admin review transitions use nonce-checked POST actions: `pending`, `needs_evidence`, `approved`, `rejected`, and evidence levels `unverified`, `corroborated`, `verified`. The last reviewer ID and date are stored internally.
+- **Approval does not publish.** A distinct publication and default-preset selection workflow is still to be built. The offline public projector only accepts explicit review plus explicit publication authorization.
+- Basic tests check disabled access, admin capability, source isolation schema, field normalization and private-data minimization; a full live Jetpack import and administrator UI walkthrough remain necessary.
+
+### Release gates before any plugin activation
+
+1. Back up and verify database restoration for the new private table.
+2. Review how source attribution is recorded by Jetpack when the draft form is tested on page 1246, exactly as with NTA form provenance; never assume the page ID without a test record.
+3. Verify the full saved field-label shape, particularly `Permission to process anonymous rate facts` checkbox and optional text inputs. The parser may need adapting to Jetpack's checkbox storage representation.
+4. Audit nonce, capability, admin form handling and WordPress table creation using a real staging site.
+5. Decide retention/deletion: original Jetpack private feedback and the separate review-table row must be deletable together by authorized staff.
+6. Do not deploy into the current NTA plugin directory inadvertently; this is a **separate plugin**, deployment must be explicitly reviewed.
+7. Verify evidence/attachments storage (currently unsupported), reviewer audit history and explicit public registry publishing before declaring production readiness.
+
+### Current limits
+
+This implementation establishes a controlled review *interface and import logic in source code only*, not live synchronization. It is intentionally less capable than a finished product so no submitted claim can accidentally update a public wage preset.
