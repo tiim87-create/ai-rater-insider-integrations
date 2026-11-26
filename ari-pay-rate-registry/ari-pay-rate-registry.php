@@ -148,18 +148,21 @@ final class ARI_Pay_Rate_Admin {
         $rows=$wpdb->get_results("SELECT feedback_id,claim_json,review_status,evidence_level,reviewed_at
                  FROM {$table} ORDER BY feedback_id DESC LIMIT 100",ARRAY_A);
         echo '<h2>Latest claims (up to 100)</h2><table class="widefat striped"><thead><tr>';
-        echo '<th>Feedback</th><th>Project / Vendor</th><th>Market / Role</th><th>Claimed rate</th><th>Evidence category</th><th>Review status</th><th>Action</th>';
+        echo '<th>Feedback</th><th>Project / Vendor</th><th>Market / Role</th><th>Claimed rate</th><th>Evidence / period</th><th>Review status</th><th>Action</th>';
         echo '</tr></thead><tbody>';
         foreach((array)$rows as $row) {
             $claim=json_decode($row['claim_json'],true);
             if (!is_array($claim)) continue;
             $id=(int)$row['feedback_id'];
-            echo '<tr><td>'.esc_html((string)$id).'</td>';
+            // This private wp-admin link is visible only to manage_options users.
+            // No private feedback content or uploads are copied into this table.
+            $feedback_url=admin_url('admin.php?page=jetpack-forms-responses-wp-admin&p='.rawurlencode('/response/'.$id));
+            echo '<tr><td><a href="'.esc_url($feedback_url).'" target="_blank" rel="noopener noreferrer">'.esc_html((string)$id).'</a></td>';
             echo '<td>'.esc_html(($claim['project']??'').' / '.($claim['vendor']??'')).'</td>';
             echo '<td>'.esc_html(($claim['country_iso2']??'').' / '.($claim['locale']??'').' / '.($claim['role_pool']??'')).'</td>';
             echo '<td>'.esc_html((string)($claim['rate_amount']??'').' '.($claim['currency']??'').' / '.($claim['pay_unit']??'')).'</td>';
-            echo '<td>'.esc_html($claim['evidence_kind']??'').'</td>';
-            echo '<td>'.esc_html($row['review_status'].' / '.$row['evidence_level']).'</td>';
+            echo '<td>'.esc_html(($claim['evidence_kind']??'').' / '.($claim['evidence_month']??'')).'</td>';
+            echo '<td>'.esc_html($row['review_status'].' / '.$row['evidence_level']).'<br><small>'.esc_html($row['reviewed_at']??'').'</small></td>';
             echo '<td><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
             echo '<input type="hidden" name="action" value="ari_pay_rate_review">';
             echo '<input type="hidden" name="feedback_id" value="'.esc_attr((string)$id).'">';
