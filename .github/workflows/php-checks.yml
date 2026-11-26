@@ -12,4 +12,6 @@ jobs:
         run: |
           find ari-nta-bridge tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Run schema tests
-        run: php tests/test-schema.php
+        run: |
+          php tests/test-schema.php
+          php tests/test-capture-gate.php
