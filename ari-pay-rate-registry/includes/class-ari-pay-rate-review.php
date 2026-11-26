@@ -100,8 +100,17 @@ final class ARI_Pay_Rate_Review {
             $key=implode('|',array($c['vendor'],$c['project'],$c['role_pool'],$c['country_iso2'],$c['locale'],$c['contract_type']));
             if ($default && isset($defaults[$key])) return null; // Refuse ambiguous defaults.
             if ($default) $defaults[$key]=true;
-            if (!is_numeric($c['rate_amount']) || (float)$c['rate_amount']<=0 || (float)$c['rate_amount']>10000000) continue;
+            // Revalidate every public field even when a stored claim says "approved".
+            if (!in_array($c['project'],self::PROJECTS,true) ||
+                !in_array($c['vendor'],self::VENDORS,true) ||
+                !in_array($c['role_pool'],self::ROLES,true) ||
+                !in_array($c['contract_type'],self::CONTRACTS,true) ||
+                !in_array($c['pay_unit'],self::UNITS,true) ||
+                !in_array($c['rate_type'],self::RATE_TYPES,true)) continue;
+            if (!is_numeric($c['rate_amount']) || !is_finite((float)$c['rate_amount']) ||
+                (float)$c['rate_amount']<=0 || (float)$c['rate_amount']>10000000) continue;
             if (!preg_match('/^[A-Z]{2}$/D',$c['country_iso2']) ||
+                !preg_match('/^[a-z]{2,3}(?:-[A-Z]{2})?$/D',$c['locale']) ||
                 !preg_match('/^[A-Z]{3}$/D',$c['currency']) ||
                 !preg_match('/^20\\d\\d-(0[1-9]|1[0-2])$/D',$c['evidence_month'])) continue;
             $rates[]=array(
