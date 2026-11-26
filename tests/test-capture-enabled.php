@@ -72,6 +72,9 @@ $GLOBALS['test_post_type']='feedback';
 $GLOBALS['test_source']='1204';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 assert_gate($GLOBALS['wpdb']->calls===0,'incorrect source cannot insert');
+$GLOBALS['test_source']='1175';
+ARI_NTA_Bridge::process_saved_feedback(99901);
+assert_gate($GLOBALS['wpdb']->calls===0,'dashboard source 1175 rejected until metadata verified and allowlist updated');
 $GLOBALS['test_source']='1200';
 
 $GLOBALS['test_date']='2026-11-30 13:00:00';
