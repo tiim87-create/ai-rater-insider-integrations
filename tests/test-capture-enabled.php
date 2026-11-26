@@ -87,6 +87,9 @@ $GLOBALS['test_meta']['Days with NTA']='4';
 ARI_NTA_Bridge::process_saved_feedback(99901);
 assert_gate($GLOBALS['wpdb']->calls===0,'invalid cross-field values cannot insert');
 $GLOBALS['test_meta']=entry();
+// Deliberately inject unexpected private metadata into the synthetic Jetpack payload.
+$GLOBALS['test_meta']['email']='nobody@example.invalid';
+$GLOBALS['test_meta']['IP Address']='198.51.100.2';
 
 ARI_NTA_Bridge::process_saved_feedback(99901);
 assert_gate(count($GLOBALS['wpdb']->records)===1,'valid post-launch synthetic response inserted');
