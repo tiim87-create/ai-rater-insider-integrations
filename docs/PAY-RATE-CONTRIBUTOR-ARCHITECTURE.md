@@ -164,3 +164,9 @@ The private review handlers now have testable core methods, `import_feedback()` 
 The normalizer accepts absent optional fields and a single-element checkbox consent array, which are possible Jetpack payload shapes. Exact live Jetpack behavior still needs verification with a synthetic form submission, as does installation, correct table creation, and private record retention/removal.
 
 Offline CI: https://github.com/tiim87-create/ai-rater-insider-integrations/actions/runs/45863971091. **Production remains unchanged.**
+
+## Review screen and infrastructure discovery — 2026-11-26
+
+The admin-only screen links a claim's feedback ID to its original private Jetpack response, so reviewers can inspect source evidence via WordPress permissions rather than copying it to a public page or repository. Evidence type and evidence month are visible in the queue. Synthetic tests verify these elements and ensure no private prose or source URL leaks into the screen; the edit form has a nonce and does not offer publication switches.
+
+There is **no existing WordPress staging site** according to the WordPress staging-site listing. The pay-rate review plugin remains not deployed and disabled by default. Its source and CI are ready for a controlled staging environment, not for public collection. CI verification: https://github.com/tiim87-create/ai-rater-insider-integrations/actions/runs/45864536032.
