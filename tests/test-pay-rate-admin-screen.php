@@ -17,6 +17,11 @@ function submit_button($text,$type='primary',$name='submit',$wrap=true) {
 function wp_nonce_field($action) { echo '<input type="hidden" name="_wpnonce" value="synthetic">'; }
 class ReviewerMockDB {
     public $prefix='test_';
+    public $table_exists=true;
+    public function prepare($sql,$value) { return str_replace('%s',"'".addslashes($value)."'",$sql); }
+    public function get_var($sql) {
+        return $this->table_exists?'test_ari_pay_rate_claims':null;
+    }
     public function get_results($sql,$output) {
         return array(array(
           'feedback_id'=>72501,
@@ -61,3 +66,14 @@ ensure(strpos($html,'approved_for_publication')===false &&
 ensure(strpos($html,'ari_pay_rate_review')!==false &&
        strpos($html,'_wpnonce')!==false,
        'moderation includes CSRF protected form');
+
+$diagnostics=ARI_Pay_Rate_Admin::diagnostics();
+ensure($diagnostics['Private review table exists']==='Yes' &&
+       $diagnostics['Expected Jetpack source page']==='1246',
+       'read-only diagnostics show table presence and expected page');
+ensure(!array_key_exists('Email',$diagnostics) && !array_key_exists('IP',$diagnostics),
+       'diagnostics do not include respondent identity');
+$GLOBALS['wpdb']->table_exists=false;
+$diagnostics=ARI_Pay_Rate_Admin::diagnostics();
+ensure($diagnostics['Private review table exists']==='No',
+       'missing table is reported instead of pretending activation succeeded');
