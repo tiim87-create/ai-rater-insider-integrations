@@ -126,3 +126,19 @@ check(ARI_Pay_Rate_Review::normalize_claim($target)===null,'unlisted language re
 $target['Project language']='English (en)';
 $target['Currency']='Random Currency (ZZZ)';
 check(ARI_Pay_Rate_Review::normalize_claim($target)===null,'unlisted currency rejected');
+
+$missing=example(); unset($missing['Evidence Context optional']);
+$shape=ARI_Pay_Rate_Review::field_shape($missing);
+check($shape['present_field_count']===15 && $shape['missing_expected_labels']===array('Evidence Context optional'),
+      'missing optional schema label is visible without a value');
+check(ARI_Pay_Rate_Review::invalid_field_labels($missing)===array(),
+      'missing optional field is not an invalid value');
+$missing=example(); unset($missing['Permission to process anonymous rate facts']);
+check(in_array('Permission to process anonymous rate facts',ARI_Pay_Rate_Review::invalid_field_labels($missing),true),
+      'missing consent is diagnosed as invalid');
+$bad=example(); $bad['Currency']='Some custom currency';
+$invalid=ARI_Pay_Rate_Review::invalid_field_labels($bad);
+check($invalid===array('Currency') && !str_contains(json_encode($invalid),'custom'),
+      'invalid reported as schema label without submitted value');
+check(ARI_Pay_Rate_Review::invalid_field_labels(example())===array(),
+      'normal test claim has no invalid fields');
