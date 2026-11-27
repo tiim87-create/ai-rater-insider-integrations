@@ -21,6 +21,33 @@ final class ARI_Pay_Rate_Review {
     private const EVIDENCE = array('Vendor platform rate screen', 'Online contract or agreement', 'Vendor email or rate notice', 'Invoice or payment statement', 'Earnings report or payslip', 'Official job posting', 'Other screenshot or document', 'Personal report without documentation');
     private const CONSENT = 'I agree to private review of my submission and understand that no identifiable information will be published.';
 
+    /**
+     * Admin diagnostics: return shape booleans only, never respondent values.
+     * Supports Jetpack's numbered labels (for example 0_Project).
+     */
+    public static function field_shape( $input ) {
+        $seen=array_fill_keys(self::FIELDS,false);
+        $duplicate=false;
+        if (is_array($input)) {
+            foreach ($input as $key=>$_discard) {
+                if (!is_string($key)) continue;
+                $label=$key;
+                if (!array_key_exists($label,$seen)) {
+                    if (!preg_match('/^[0-9]+_(.+)$/D',$key,$matches)) continue;
+                    $label=$matches[1];
+                }
+                if (!array_key_exists($label,$seen)) continue;
+                if ($seen[$label]) $duplicate=true;
+                $seen[$label]=true;
+            }
+        }
+        return array(
+            'expected_field_count'=>count(self::FIELDS),
+            'present_field_count'=>count(array_filter($seen)),
+            'duplicate_labels'=>$duplicate,
+        );
+    }
+
     public static function normalize_claim( $input ) {
         if ( !is_array($input) ) return null;
         $fields = array();

@@ -141,6 +141,33 @@ final class ARI_Pay_Rate_Admin {
         );
     }
 
+    /**
+     * Only safe booleans and counts. Can run with review writes disabled.
+     * Always scope to administrator-supplied feedback ID and the exact source.
+     */
+    public static function feedback_diagnostic($id) {
+        $id=(int)$id;
+        $result=array(
+            'Feedback record exists'=>'No',
+            'Expected source page matches'=>'No',
+            'Expected fields present'=>'0 / '.count(ARI_Pay_Rate_Review::FIELDS),
+            'Duplicate field labels'=>'No',
+            'Passes claim normalizer'=>'No',
+        );
+        if ($id<=0 || get_post_type($id)!=='feedback') return $result;
+        $result['Feedback record exists']='Yes';
+        $result['Expected source page matches']=
+            (string)get_post_meta($id,'_feedback_source_post_id',true)===(string)self::SOURCE_PAGE?'Yes':'No';
+        if ($result['Expected source page matches']!=='Yes') return $result;
+        $raw=get_post_meta($id,'_feedback_extra_fields',true);
+        $shape=ARI_Pay_Rate_Review::field_shape($raw);
+        $result['Expected fields present']=$shape['present_field_count'].' / '.$shape['expected_field_count'];
+        $result['Duplicate field labels']=$shape['duplicate_labels']?'Yes':'No';
+        $result['Passes claim normalizer']=
+            ARI_Pay_Rate_Review::normalize_claim($raw)!==null?'Yes':'No';
+        return $result;
+    }
+
     public static function screen() {
         if (!current_user_can('manage_options')) wp_die('Insufficient permissions.');
         echo '<div class="wrap"><h1>Pay Rate Reviews — Staging</h1>';
@@ -151,6 +178,24 @@ final class ARI_Pay_Rate_Admin {
             echo '<li>'.esc_html($key).': <strong>'.esc_html($value).'</strong></li>';
         }
         echo '</ul>';
+        echo '<h2>Jetpack feedback provenance check</h2>';
+        echo '<p>Administrator-only, read-only check. Outputs counts and booleans, never submitted values.</p>';
+        echo '<form method="get" action="'.esc_url(admin_url('tools.php')).'">';
+        echo '<input type="hidden" name="page" value="ari-pay-rate-reviews">';
+        wp_nonce_field('ari_pay_rate_diagnostic');
+        echo '<label>Feedback ID <input type="number" name="ari_feedback_id" min="1" required></label> ';
+        submit_button('Check feedback','secondary','submit',false);
+        echo '</form>';
+        if (isset($_GET['ari_feedback_id'])) {
+            check_admin_referer('ari_pay_rate_diagnostic');
+            $feedback_id=absint(wp_unslash($_GET['ari_feedback_id']));
+            $health=self::feedback_diagnostic($feedback_id);
+            echo '<ul>';
+            foreach($health as $label=>$value) {
+                echo '<li>'.esc_html($label).': <strong>'.esc_html($value).'</strong></li>';
+            }
+            echo '</ul>';
+        }
         if (!self::enabled()) {
             echo '<p><strong>Disabled.</strong> No imports or review changes are permitted. Configure the explicit server-side review flag after a controlled test.</p></div>';
             return;
