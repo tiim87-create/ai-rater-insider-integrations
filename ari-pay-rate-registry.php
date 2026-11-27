@@ -124,9 +124,33 @@ final class ARI_Pay_Rate_Admin {
           array('%s','%s','%d','%s'),array('%d'));
         return $res!==false && $res>0?'reviewed':'unchanged';
     }
+    /**
+     * No feedback values, SQL table rows, stored rates, identities, or secrets.
+     * Runs within administrator-only screen; read-only even with write flag OFF.
+     */
+    public static function diagnostics() {
+        global $wpdb;
+        $table=self::table();
+        // Escaped literal table name from server-controlled WP prefix + fixed suffix.
+        $exists=$wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s',$table));
+        return array(
+            'Review writes enabled'=>self::enabled()?'Yes':'No',
+            'Private review table exists'=>(string)$exists===(string)$table?'Yes':'No',
+            'Expected Jetpack source page'=>(string)self::SOURCE_PAGE,
+            'No automatic public publishing'=>'Yes',
+        );
+    }
+
     public static function screen() {
         if (!current_user_can('manage_options')) wp_die('Insufficient permissions.');
         echo '<div class="wrap"><h1>Pay Rate Reviews — Staging</h1>';
+        echo '<h2>Read-only integration checks</h2>';
+        $checks=self::diagnostics();
+        echo '<ul>';
+        foreach($checks as $key=>$value) {
+            echo '<li>'.esc_html($key).': <strong>'.esc_html($value).'</strong></li>';
+        }
+        echo '</ul>';
         if (!self::enabled()) {
             echo '<p><strong>Disabled.</strong> No imports or review changes are permitted. Configure the explicit server-side review flag after a controlled test.</p></div>';
             return;
