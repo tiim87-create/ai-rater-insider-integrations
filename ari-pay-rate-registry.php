@@ -151,6 +151,8 @@ final class ARI_Pay_Rate_Admin {
             'Feedback record exists'=>'No',
             'Expected source page matches'=>'No',
             'Expected fields present'=>'0 / '.count(ARI_Pay_Rate_Review::FIELDS),
+            'Missing expected field labels'=>'Not inspected',
+            'Invalid expected field labels'=>'Not inspected',
             'Duplicate field labels'=>'No',
             'Passes claim normalizer'=>'No',
         );
@@ -162,6 +164,10 @@ final class ARI_Pay_Rate_Admin {
         $raw=get_post_meta($id,'_feedback_extra_fields',true);
         $shape=ARI_Pay_Rate_Review::field_shape($raw);
         $result['Expected fields present']=$shape['present_field_count'].' / '.$shape['expected_field_count'];
+        $result['Missing expected field labels']=empty($shape['missing_expected_labels'])
+            ? 'None' : implode(', ',$shape['missing_expected_labels']);
+        $invalid=ARI_Pay_Rate_Review::invalid_field_labels($raw);
+        $result['Invalid expected field labels']=empty($invalid) ? 'None' : implode(', ',$invalid);
         $result['Duplicate field labels']=$shape['duplicate_labels']?'Yes':'No';
         $result['Passes claim normalizer']=
             ARI_Pay_Rate_Review::normalize_claim($raw)!==null?'Yes':'No';
