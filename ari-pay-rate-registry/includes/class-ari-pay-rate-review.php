@@ -63,6 +63,76 @@ final class ARI_Pay_Rate_Review {
         return in_array($code,explode(' ',$allowed_codes),true)?$code:null;
     }
 
+    /**
+     * Read-only validation reasons as expected FIELD LABELS, never input values.
+     * Allows diagnosis of native Jetpack block shapes without dumping responses.
+     */
+    public static function invalid_field_labels($input) {
+        if (!is_array($input)) return self::FIELDS;
+        $data=array();
+        $invalid=array();
+        foreach($input as $key=>$value) {
+            if (!is_string($key)) continue;
+            $label=$key;
+            if (!in_array($label,self::FIELDS,true)) {
+                if (!preg_match('/^[0-9]+_(.+)$/D',$key,$m)) continue;
+                $label=$m[1];
+            }
+            if (!in_array($label,self::FIELDS,true)) continue;
+            if (array_key_exists($label,$data)) {
+                $invalid[$label]=true;
+                continue;
+            }
+            if ($label==='Permission to process anonymous rate facts' && is_array($value)) {
+                $value=count($value)===1 && isset($value[0]) ? $value[0] : null;
+            }
+            $data[$label]=$value;
+        }
+        foreach(self::FIELDS as $label) {
+            $optional=in_array($label,array(
+                'Project target country optional','Public Source URL optional','Evidence Context optional'
+            ),true);
+            if (!array_key_exists($label,$data)) {
+                if (!$optional) $invalid[$label]=true;
+                continue;
+            }
+            $v=$data[$label];
+            if ((!is_string($v) && !is_numeric($v)) || strlen((string)$v)>500) {
+                $invalid[$label]=true; continue;
+            }
+            $v=trim((string)$v);
+            if ($v==='' && !$optional) {$invalid[$label]=true;continue;}
+            $valid=true;
+            switch($label) {
+                case 'Project': $valid=in_array($v,self::PROJECTS,true);break;
+                case 'Vendor': $valid=in_array($v,self::VENDORS,true);break;
+                case 'Role or Pool': $valid=in_array($v,self::ROLES,true);break;
+                case 'Country': $valid=self::read_selected_code($v,2,self::COUNTRY_CODES)!==null;break;
+                case 'Project language': $valid=self::read_selected_code($v,2,self::LANGUAGE_CODES)!==null;break;
+                case 'Project target country optional':
+                    $valid=$v==='' || $v==='Same as country of work' ||
+                           self::read_selected_code($v,2,self::COUNTRY_CODES)!==null;break;
+                case 'Contract Arrangement': $valid=in_array($v,self::CONTRACTS,true);break;
+                case 'Currency': $valid=self::read_selected_code($v,3,self::CURRENCY_CODES)!==null;break;
+                case 'Rate Amount':
+                    $valid=(bool)preg_match('/^(?:0|[1-9]\\d{0,7})(?:\\.\\d{1,4})?$/D',$v)
+                      && (float)$v>0 && (float)$v<=10000000;break;
+                case 'Pay Unit': $valid=in_array($v,self::UNITS,true);break;
+                case 'Rate Type': $valid=in_array($v,self::RATE_TYPES,true);break;
+                case 'Evidence Month YYYY-MM':
+                    $valid=(bool)preg_match('/^20\\d\\d-(0[1-9]|1[0-2])$/D',$v);break;
+                case 'Evidence Type': $valid=in_array($v,self::EVIDENCE,true);break;
+                case 'Public Source URL optional':
+                    $valid=$v==='' || (strlen($v)<=300 &&
+                      (bool)preg_match('~^https://[a-z0-9.-]+(?::443)?(?:/[^\\s]*)?$~iD',$v));break;
+                case 'Permission to process anonymous rate facts':
+                    $valid=$v===self::CONSENT;break;
+            }
+            if (!$valid) $invalid[$label]=true;
+        }
+        return array_keys($invalid);
+    }
+
     public static function normalize_claim( $input ) {
         if ( !is_array($input) ) return null;
         $fields = array();
