@@ -95,3 +95,17 @@ $duplicate=example();
 $duplicate['1_Project']='Ads Quality Rating';
 check(ARI_Pay_Rate_Review::normalize_claim($duplicate)===null,
       'duplicate normalized field labels rejected');
+
+$shape=ARI_Pay_Rate_Review::field_shape(example());
+check($shape['present_field_count']===15 && !$shape['duplicate_labels'],
+      'admin health counts expected labels only');
+$shape=ARI_Pay_Rate_Review::field_shape(array_merge(example(),array(
+    '2_Project'=>'Other','Email'=>'private@example.invalid',
+    'IP'=>'198.51.100.40'
+)));
+check($shape['duplicate_labels'] && $shape['present_field_count']===15,
+      'health detects normalized label collision but ignores private metadata');
+$shape=ARI_Pay_Rate_Review::field_shape(array('Email'=>'private@example.invalid'));
+check($shape['present_field_count']===0 &&
+      !isset($shape['Email']) && !isset($shape['IP']),
+      'health never emits unknown fields or sensitive values');
