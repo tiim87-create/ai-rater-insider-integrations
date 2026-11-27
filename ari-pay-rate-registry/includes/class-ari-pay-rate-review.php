@@ -47,6 +47,8 @@ final class ARI_Pay_Rate_Review {
         return array(
             'expected_field_count'=>count(self::FIELDS),
             'present_field_count'=>count(array_filter($seen)),
+            // Schema labels ONLY. No raw values, unknown keys or attachment metadata.
+            'missing_expected_labels'=>array_keys(array_filter($seen,static function($present) {return !$present;})),
             'duplicate_labels'=>$duplicate,
         );
     }
