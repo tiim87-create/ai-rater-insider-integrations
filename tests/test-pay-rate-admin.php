@@ -126,3 +126,24 @@ assert_review(ARI_Pay_Rate_Admin::apply_review(889,'approved','verified')==='unc
 assert_review(ARI_Pay_Rate_Admin::apply_review(888,'approved','invalid')==='invalid_review',
     'unknown evidence levels rejected');
 assert_review(count($GLOBALS['wpdb']->rows)===1,'only one authorized private claim exists');
+
+$GLOBALS['mock_meta']=valid_form();
+$GLOBALS['source']='1246'; $GLOBALS['type']='feedback';
+$health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
+assert_review($health['Feedback record exists']==='Yes' &&
+    $health['Expected source page matches']==='Yes' &&
+    $health['Expected fields present']==='15 / 15' &&
+    $health['Passes claim normalizer']==='Yes',
+    'synthetic original-source feedback passes read-only diagnostics');
+assert_review(strpos(json_encode($health),'PRIVATE CONTEXT')===false &&
+    strpos(json_encode($health),'private@example.invalid')===false,
+    'health excludes original private content');
+$GLOBALS['source']='1200';
+$health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
+assert_review($health['Expected source page matches']==='No' &&
+    $health['Expected fields present']==='0 / 15',
+    'wrong-source feedback is not inspected');
+$GLOBALS['type']='page';
+$health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
+assert_review($health['Feedback record exists']==='No',
+    'non-feedback post is excluded from read-only diagnostic');
