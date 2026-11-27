@@ -5,8 +5,8 @@
  */
 final class ARI_Pay_Rate_Review {
     public const FIELDS = array(
-        'Project', 'Vendor', 'Role or Pool', 'Country ISO2', 'Project Locale',
-        'Contract Arrangement', 'Currency ISO4217', 'Rate Amount', 'Pay Unit',
+        'Project', 'Vendor', 'Role or Pool', 'Country', 'Project language',
+        'Project target country optional', 'Contract Arrangement', 'Currency', 'Rate Amount', 'Pay Unit',
         'Rate Type', 'Evidence Month YYYY-MM', 'Evidence Type',
         'Public Source URL optional', 'Evidence Context optional',
         'Permission to process anonymous rate facts',
@@ -19,6 +19,9 @@ final class ARI_Pay_Rate_Review {
     private const UNITS = array('Per hour', 'Per task', 'Per 1000 tasks', 'Other or unclear');
     private const RATE_TYPES = array('Fixed agreed rate', 'Task-based equivalent estimate', 'Advertised up-to ceiling', 'Other or unclear');
     private const EVIDENCE = array('Vendor platform rate screen', 'Online contract or agreement', 'Vendor email or rate notice', 'Invoice or payment statement', 'Earnings report or payslip', 'Official job posting', 'Other screenshot or document', 'Personal report without documentation');
+    private const COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW';
+    private const LANGUAGE_CODES = 'ar bg bn ca cs da de el en es et fa fi fil fr gu he hi hr hu id it ja ka kk km kn ko lt lv ml mr ms my ne nl no pa pl pt ro ru si sk sl sr sv sw ta te th tl tr uk ur uz vi zh';
+    private const CURRENCY_CODES = 'AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CAD CDF CHF CLP CNY COP CRC CUC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HRK HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLL SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST XAF XCD XDR XOF XPF XSU YER ZAR ZMW ZWL';
     private const CONSENT = 'I agree to private review of my submission and understand that no identifiable information will be published.';
 
     /**
@@ -48,6 +51,16 @@ final class ARI_Pay_Rate_Review {
         );
     }
 
+    private static function read_selected_code($display,$width,$allowed_codes) {
+        if (!is_string($display)) return null;
+        $pattern=$width===3?'/^.+ \\(([A-Z]{3})\\)$/D':'/^.+ \\(([A-Za-z]{2,3})\\)$/D';
+        if (!preg_match($pattern,$display,$m)) return null;
+        $code=$m[1];
+        if (strlen($code)!==$width && !($allowed_codes===self::LANGUAGE_CODES && strlen($code)===3)) return null;
+        // Codes may be selected only from the strict server-side allowlist.
+        return in_array($code,explode(' ',$allowed_codes),true)?$code:null;
+    }
+
     public static function normalize_claim( $input ) {
         if ( !is_array($input) ) return null;
         $fields = array();
@@ -69,7 +82,7 @@ final class ARI_Pay_Rate_Review {
             $fields[$label] = trim((string)$value);
         }
         // Unchecked optional Jetpack fields can be omitted altogether.
-        foreach (array('Public Source URL optional','Evidence Context optional') as $optional) {
+        foreach (array('Public Source URL optional','Evidence Context optional','Project target country optional') as $optional) {
             if (!array_key_exists($optional,$fields)) $fields[$optional]='';
         }
         foreach(self::FIELDS as $field) {
@@ -84,9 +97,14 @@ final class ARI_Pay_Rate_Review {
             !in_array($fields['Rate Type'],self::RATE_TYPES,true) ||
             !in_array($fields['Evidence Type'],self::EVIDENCE,true)) return null;
 
-        if (!preg_match('/^[A-Z]{2}$/D',$fields['Country ISO2']) ||
-            !preg_match('/^[a-z]{2,3}(?:-[A-Z]{2})?$/D',$fields['Project Locale']) ||
-            !preg_match('/^[A-Z]{3}$/D',$fields['Currency ISO4217'])) return null;
+        $country=self::read_selected_code($fields['Country'],2,self::COUNTRY_CODES);
+        $language=self::read_selected_code($fields['Project language'],2,self::LANGUAGE_CODES);
+        $market=$fields['Project target country optional'];
+        $target_country=$market==='' || $market==='Same as country of work'
+            ? $country : self::read_selected_code($market,2,self::COUNTRY_CODES);
+        $currency=self::read_selected_code($fields['Currency'],3,self::CURRENCY_CODES);
+        if (!$country || !$language || !$target_country || !$currency) return null;
+        $locale=$language.'-'.$target_country;
         // Dates must be real calendar months, not arbitrary input strings.
         $month=$fields['Evidence Month YYYY-MM'];
         if (!preg_match('/^20\\d\\d-(0[1-9]|1[0-2])$/D',$month)) return null;
@@ -99,9 +117,9 @@ final class ARI_Pay_Rate_Review {
         // Private prose may be stored only for reviewer use; must never enter public output.
         return array(
           'project'=>$fields['Project'], 'vendor'=>$fields['Vendor'],
-          'role_pool'=>$fields['Role or Pool'], 'country_iso2'=>$fields['Country ISO2'],
-          'locale'=>$fields['Project Locale'], 'contract_type'=>$fields['Contract Arrangement'],
-          'currency'=>$fields['Currency ISO4217'], 'rate_amount'=>(float)$rate,
+          'role_pool'=>$fields['Role or Pool'], 'country_iso2'=>$country,
+          'locale'=>$locale, 'contract_type'=>$fields['Contract Arrangement'],
+          'currency'=>$currency, 'rate_amount'=>(float)$rate,
           'pay_unit'=>$fields['Pay Unit'], 'rate_type'=>$fields['Rate Type'],
           'evidence_month'=>$month, 'evidence_kind'=>$fields['Evidence Type'],
           'source_url_private'=>$url, 'context_private'=>$fields['Evidence Context optional']
