@@ -59,9 +59,9 @@ require_once __DIR__.'/../ari-pay-rate-registry/ari-pay-rate-registry.php';
 function valid_form() {
  return array(
   'Project'=>'Search Quality Rating', 'Vendor'=>'WeloData',
-  'Role or Pool'=>'Search Quality General Pool','Country ISO2'=>'US',
-  'Project Locale'=>'en-US','Contract Arrangement'=>'Independent contractor',
-  'Currency ISO4217'=>'USD','Rate Amount'=>'15.50',
+  'Role or Pool'=>'Search Quality General Pool','Country'=>'United States (US)',
+  'Project language'=>'English (en)', 'Project target country optional'=>'United States (US)','Contract Arrangement'=>'Independent contractor',
+  'Currency'=>'US Dollar (USD)','Rate Amount'=>'15.50',
   'Pay Unit'=>'Per hour','Rate Type'=>'Fixed agreed rate',
   'Evidence Month YYYY-MM'=>'2026-11',
   'Evidence Type'=>'Vendor platform rate screen',
@@ -132,7 +132,7 @@ $GLOBALS['source']='1246'; $GLOBALS['type']='feedback';
 $health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
 assert_review($health['Feedback record exists']==='Yes' &&
     $health['Expected source page matches']==='Yes' &&
-    $health['Expected fields present']==='15 / 15' &&
+    $health['Expected fields present']==='16 / 16' &&
     $health['Passes claim normalizer']==='Yes',
     'synthetic original-source feedback passes read-only diagnostics');
 assert_review(strpos(json_encode($health),'PRIVATE CONTEXT')===false &&
@@ -141,7 +141,7 @@ assert_review(strpos(json_encode($health),'PRIVATE CONTEXT')===false &&
 $GLOBALS['source']='1200';
 $health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
 assert_review($health['Expected source page matches']==='No' &&
-    $health['Expected fields present']==='0 / 15',
+    $health['Expected fields present']==='0 / 16',
     'wrong-source feedback is not inspected');
 $GLOBALS['type']='page';
 $health=ARI_Pay_Rate_Admin::feedback_diagnostic(777);
