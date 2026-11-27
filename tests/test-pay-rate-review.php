@@ -8,9 +8,9 @@ function check($condition,$message) {
 function example() {
  return array(
   'Project'=>'Search Quality Rating', 'Vendor'=>'WeloData',
-  'Role or Pool'=>'Search Quality General Pool', 'Country ISO2'=>'US',
-  'Project Locale'=>'en-US', 'Contract Arrangement'=>'Independent contractor',
-  'Currency ISO4217'=>'USD', 'Rate Amount'=>'15.50',
+  'Role or Pool'=>'Search Quality General Pool', 'Country'=>'United States (US)',
+  'Project language'=>'English (en)', 'Project target country optional'=>'United States (US)', 'Contract Arrangement'=>'Independent contractor',
+  'Currency'=>'US Dollar (USD)', 'Rate Amount'=>'15.50',
   'Pay Unit'=>'Per hour', 'Rate Type'=>'Fixed agreed rate',
   'Evidence Month YYYY-MM'=>'2026-11',
   'Evidence Type'=>'Vendor platform rate screen',
@@ -29,8 +29,8 @@ $bad=example(); $bad['Rate Amount']='-4';
 check(ARI_Pay_Rate_Review::normalize_claim($bad)===null,'negative amount rejected');
 $bad=example(); $bad['Evidence Month YYYY-MM']='2026-13';
 check(ARI_Pay_Rate_Review::normalize_claim($bad)===null,'invalid month rejected');
-$bad=example(); $bad['Country ISO2']='USA';
-check(ARI_Pay_Rate_Review::normalize_claim($bad)===null,'invalid country rejected');
+$bad=example(); $bad['Country']='Not a country';
+check(ARI_Pay_Rate_Review::normalize_claim($bad)===null,'invalid displayed country rejected');
 $bad=example(); $bad['Permission to process anonymous rate facts']='';
 check(ARI_Pay_Rate_Review::normalize_claim($bad)===null,'missing consent rejected');
 $bad=example(); $bad['Public Source URL optional']='javascript:alert(1)';
@@ -97,15 +97,32 @@ check(ARI_Pay_Rate_Review::normalize_claim($duplicate)===null,
       'duplicate normalized field labels rejected');
 
 $shape=ARI_Pay_Rate_Review::field_shape(example());
-check($shape['present_field_count']===15 && !$shape['duplicate_labels'],
+check($shape['present_field_count']===16 && !$shape['duplicate_labels'],
       'admin health counts expected labels only');
 $shape=ARI_Pay_Rate_Review::field_shape(array_merge(example(),array(
     '2_Project'=>'Other','Email'=>'private@example.invalid',
     'IP'=>'198.51.100.40'
 )));
-check($shape['duplicate_labels'] && $shape['present_field_count']===15,
+check($shape['duplicate_labels'] && $shape['present_field_count']===16,
       'health detects normalized label collision but ignores private metadata');
 $shape=ARI_Pay_Rate_Review::field_shape(array('Email'=>'private@example.invalid'));
 check($shape['present_field_count']===0 &&
       !isset($shape['Email']) && !isset($shape['IP']),
       'health never emits unknown fields or sensitive values');
+
+$target=example();
+$target['Country']='India (IN)';
+$target['Project language']='English (en)';
+$target['Project target country optional']='United States (US)';
+$target['Currency']='US Dollar (USD)';
+$mapped=ARI_Pay_Rate_Review::normalize_claim($target);
+check($mapped['country_iso2']==='IN' && $mapped['locale']==='en-US' && $mapped['currency']==='USD',
+      'country and project target locale independently normalized');
+$target['Project target country optional']='Same as country of work';
+$mapped=ARI_Pay_Rate_Review::normalize_claim($target);
+check($mapped['locale']==='en-IN','default project target market follows work country');
+$target['Project language']='RandomUserInput (zz)';
+check(ARI_Pay_Rate_Review::normalize_claim($target)===null,'unlisted language rejected');
+$target['Project language']='English (en)';
+$target['Currency']='Random Currency (ZZZ)';
+check(ARI_Pay_Rate_Review::normalize_claim($target)===null,'unlisted currency rejected');
