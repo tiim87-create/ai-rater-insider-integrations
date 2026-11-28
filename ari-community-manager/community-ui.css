@@ -1,0 +1,10 @@
+/* ARI Community — page 1272 only */
+body.page-id-1272 #wpforo-wrap {font-family:inherit;color:#202020;}
+body.page-id-1272 #wpforo-wrap a {color:#333333;}
+body.page-id-1272 #wpforo-wrap a:hover {color:#111111;text-decoration:underline;}
+body.page-id-1272 #wpforo-wrap #wpforo-menu {background:#f5f5f5;border-color:#e5e5e5;}
+body.page-id-1272 #wpforo-wrap .wpforo-category {background:#f5f5f5;border-bottom-color:#555555;}
+body.page-id-1272 #wpforo-wrap .wpforo-category a {color:#202020;}
+body.page-id-1272 #wpforo-wrap .wpforo-forum-title {font-weight:600;}
+body.page-id-1272 #wpforo-wrap .wpforo-forum-description {color:#666666;}
+body.page-id-1272 #wpforo-wrap a:focus-visible,body.page-id-1272 #wpforo-wrap button:focus-visible {outline:2px solid #333;outline-offset:3px;}
