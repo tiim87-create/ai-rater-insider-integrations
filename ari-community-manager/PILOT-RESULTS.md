@@ -1,0 +1,2 @@
+# Pilot results — 2026-11-28
+User reported v0.3.0 output: Keep: TELUS Digital; Keep: Search Quality Rating. Repeat run recognizes both existing records. Initial creation log and effective permissions were not supplied. Installed add() contract: permission array (singular), parent layout inherited, returns insert ID or false, clears cache. Next: verify hierarchy and effective permissions, then extend create-only pilot to full registry (3 remaining categories and 10 remaining forums). No deletion, rename or rollback. Production unchanged by this test.
